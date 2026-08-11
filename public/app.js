@@ -270,8 +270,8 @@ async function fetchDashboardData() {
 
     // Use the custom slider state variables directly
     const startTimeStr = minutesToTimeString(selectedStartMinutes);
-    // In live mode: equity closes at 15:40, MCX crude at 17:20
-    const liveEndTime  = isMCX ? '17:20:00' : '15:40:00';
+    // In live mode: equity closes at 15:40, MCX crude at 23:30
+    const liveEndTime  = isMCX ? '23:30:00' : '15:40:00';
     const endTimeStr   = isLiveMode ? liveEndTime : minutesToTimeString(selectedEndMinutes);
 
     const spotUrl = `/api/spot-data?symbol=${encodeURIComponent(spotSymbol)}&exchange=${spotExchange}`;
