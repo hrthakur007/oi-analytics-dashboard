@@ -138,9 +138,18 @@ const lastUpdatedText = document.getElementById('last-updated-text');
 // Utility Functions
 // ----------------------------------------------------
 
-// Format OI numbers for quick reading (Indian system style - Lakhs)
+// Format OI numbers for quick reading (Indian system style - Lakhs for Equity, Absolute for MCX)
 function formatOI(value) {
   if (value === 0 || value === null || value === undefined) return "0";
+  const sym = currentSymbol.toLowerCase();
+  const isMCX = sym === 'crudeoil' || sym === 'crudeoilm';
+  if (isMCX) {
+    const isNeg = value < 0;
+    const absVal = Math.abs(value);
+    const formatted = absVal.toLocaleString('en-IN');
+    return isNeg ? "-" + formatted : "+" + formatted;
+  }
+  
   const isNeg = value < 0;
   const absVal = Math.abs(value);
   let formatted = "";
@@ -1077,8 +1086,11 @@ const datalabelsPlugin = {
   afterDatasetsDraw(chart, args, options) {
     const { ctx } = chart;
     ctx.save();
-    ctx.font = 'bold 12px "JetBrains Mono", monospace';
+    ctx.font = 'bold 11px "JetBrains Mono", monospace';
     ctx.textAlign = 'center';
+    
+    const sym = currentSymbol.toLowerCase();
+    const isMCX = sym === 'crudeoil' || sym === 'crudeoilm';
     
     chart.data.datasets.forEach((dataset, datasetIndex) => {
       const meta = chart.getDatasetMeta(datasetIndex);
@@ -1086,15 +1098,20 @@ const datalabelsPlugin = {
         const val = dataset.data[index];
         if (val === 0 || val === null || val === undefined) return;
         
-        // Format to Lakhs, e.g. "+15.7L" or "-3.4L"
-        const absVal = Math.abs(val);
         let label = "";
-        if (absVal >= 100000) {
-          label = (val / 100000).toFixed(1) + "L";
-        } else if (absVal >= 1000) {
-          label = (val / 1000).toFixed(0) + "K";
+        if (isMCX) {
+          // Absolute value for CRUDEOIL and CRUDEOILM (e.g. 13,439 or -1,547)
+          label = val.toLocaleString('en-IN');
         } else {
-          label = val.toString();
+          // Shorthand (L / K) for Equity symbols
+          const absVal = Math.abs(val);
+          if (absVal >= 100000) {
+            label = (val / 100000).toFixed(1) + "L";
+          } else if (absVal >= 1000) {
+            label = (val / 1000).toFixed(0) + "K";
+          } else {
+            label = val.toString();
+          }
         }
         
         const isPositive = val >= 0;
