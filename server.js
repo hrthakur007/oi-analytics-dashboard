@@ -44,28 +44,69 @@ app.get('/api/oi-data', async (req, res) => {
     const expiry = req.query.expiry || '';
     const exchange = req.query.exchange || 'nse';
 
-    const url = `https://webapi.niftytrader.in/webapi/Option/oi-time-range?symbol=${symbol}&start_time=${startTime}&end_time=${endTime}&expiry=${expiry}&exchange=${exchange}`;
-    
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': USER_AGENT,
-        'Accept': 'application/json, text/plain, */*'
-      }
-    });
+    const oiUrl = `https://webapi.niftytrader.in/webapi/Option/oi-time-range?symbol=${symbol}&start_time=${startTime}&end_time=${endTime}&expiry=${expiry}&exchange=${exchange}`;
+    const chainUrl = `https://webapi.niftytrader.in/webapi/option/option-chain-data?symbol=${encodeURIComponent(symbol.toLowerCase())}&expiryDate=${expiry}&exchange=${exchange.toUpperCase()}&atmBelow=0&atmAbove=0`;
 
-    if (!response.ok) {
-      throw new Error(`NiftyTrader OI API returned status ${response.status}`);
+    const [oiRes, chainRes] = await Promise.all([
+      fetch(oiUrl, { headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json, text/plain, */*' } }),
+      fetch(chainUrl, { headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json, text/plain, */*' } }).catch(() => null)
+    ]);
+
+    if (!oiRes.ok) {
+      throw new Error(`NiftyTrader OI API returned status ${oiRes.status}`);
     }
 
-    const data = await response.json();
-    res.json(data);
+    const oiData = await oiRes.json();
+
+    if (chainRes && chainRes.ok && oiData && Array.isArray(oiData.resultData)) {
+      try {
+        const chainData = await chainRes.json();
+        if (chainData && chainData.resultData && Array.isArray(chainData.resultData.opDatas)) {
+          const ltpMap = new Map();
+          chainData.resultData.opDatas.forEach(item => {
+            ltpMap.set(item.strike_price, {
+              calls_ltp: item.calls_ltp || (item.calls_oi > 0 ? item.calls_oi_value / item.calls_oi : 0),
+              puts_ltp: item.puts_ltp || (item.puts_oi > 0 ? item.puts_oi_value / item.puts_oi : 0),
+              calls_average_price: item.calls_average_price || item.calls_ltp || 0,
+              puts_average_price: item.puts_average_price || item.puts_ltp || 0
+            });
+          });
+
+          oiData.resultData.forEach(item => {
+            const ltpInfo = ltpMap.get(item.strike_price);
+            if (ltpInfo) {
+              item.calls_ltp = ltpInfo.calls_ltp;
+              item.puts_ltp = ltpInfo.puts_ltp;
+              item.calls_average_price = ltpInfo.calls_average_price;
+              item.puts_average_price = ltpInfo.puts_average_price;
+            } else {
+              item.calls_ltp = item.calls_oi > 0 ? item.calls_oi_value / item.calls_oi : 0;
+              item.puts_ltp = item.puts_oi > 0 ? item.puts_oi_value / item.puts_oi : 0;
+              item.calls_average_price = item.calls_ltp;
+              item.puts_average_price = item.puts_ltp;
+            }
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to parse option chain data for LTP:', err.message);
+      }
+    } else if (oiData && Array.isArray(oiData.resultData)) {
+      oiData.resultData.forEach(item => {
+        item.calls_ltp = item.calls_oi > 0 ? item.calls_oi_value / item.calls_oi : 0;
+        item.puts_ltp = item.puts_oi > 0 ? item.puts_oi_value / item.puts_oi : 0;
+        item.calls_average_price = item.calls_ltp;
+        item.puts_average_price = item.puts_ltp;
+      });
+    }
+
+    res.json(oiData);
   } catch (error) {
     console.error('Error fetching OI data:', error.message);
     res.status(500).json({ error: 'Failed to fetch OI data', details: error.message });
   }
 });
 
-// MCX Commodities OI route (CRUDEOIL, CRUDEOILM) — uses change-oi-time-range endpoint + option-chain-data for volume
+// MCX Commodities OI route (CRUDEOIL, CRUDEOILM) — uses change-oi-time-range endpoint + option-chain-data for volume & LTP
 app.get('/api/mcx-oi-data', async (req, res) => {
   try {
     const symbol    = req.query.symbol    || 'CRUDEOIL';
@@ -88,35 +129,49 @@ app.get('/api/mcx-oi-data', async (req, res) => {
 
     const oiData = await oiRes.json();
 
-    // Merge volume data from option-chain-data endpoint into time-range OI items
-    if (chainRes && chainRes.ok) {
+    if (chainRes && chainRes.ok && oiData && Array.isArray(oiData.resultData)) {
       try {
-        const chainJson = await chainRes.json();
-        if (chainJson && chainJson.result === 1 && chainJson.resultData && Array.isArray(chainJson.resultData.opDatas)) {
-          const volMap = new Map();
-          chainJson.resultData.opDatas.forEach(item => {
-            volMap.set(item.strike_price, {
+        const chainData = await chainRes.json();
+        if (chainData && chainData.resultData && Array.isArray(chainData.resultData.opDatas)) {
+          const infoMap = new Map();
+          chainData.resultData.opDatas.forEach(item => {
+            infoMap.set(item.strike_price, {
               calls_volume: item.calls_volume || 0,
-              puts_volume: item.puts_volume || 0
+              puts_volume: item.puts_volume || 0,
+              calls_ltp: item.calls_ltp || (item.calls_oi > 0 ? item.calls_oi_value / item.calls_oi : 0),
+              puts_ltp: item.puts_ltp || (item.puts_oi > 0 ? item.puts_oi_value / item.puts_oi : 0),
+              calls_average_price: item.calls_average_price || item.calls_ltp || 0,
+              puts_average_price: item.puts_average_price || item.puts_ltp || 0
             });
           });
 
-          if (oiData && oiData.result === 1 && Array.isArray(oiData.resultData)) {
-            oiData.resultData.forEach(item => {
-              const vol = volMap.get(item.strike_price);
-              if (vol) {
-                item.calls_volume = vol.calls_volume;
-                item.puts_volume  = vol.puts_volume;
-              } else {
-                item.calls_volume = 0;
-                item.puts_volume  = 0;
-              }
-            });
-          }
+          oiData.resultData.forEach(item => {
+            const info = infoMap.get(item.strike_price);
+            if (info) {
+              item.calls_volume = info.calls_volume;
+              item.puts_volume = info.puts_volume;
+              item.calls_ltp = info.calls_ltp;
+              item.puts_ltp = info.puts_ltp;
+              item.calls_average_price = info.calls_average_price;
+              item.puts_average_price = info.puts_average_price;
+            } else {
+              item.calls_ltp = item.calls_oi > 0 ? item.calls_oi_value / item.calls_oi : 0;
+              item.puts_ltp = item.puts_oi > 0 ? item.puts_oi_value / item.puts_oi : 0;
+              item.calls_average_price = item.calls_ltp;
+              item.puts_average_price = item.puts_ltp;
+            }
+          });
         }
-      } catch (e) {
-        console.warn('Failed to merge MCX volume data:', e.message);
+      } catch (err) {
+        console.warn('Failed to merge MCX chain data:', err.message);
       }
+    } else if (oiData && Array.isArray(oiData.resultData)) {
+      oiData.resultData.forEach(item => {
+        item.calls_ltp = item.calls_oi > 0 ? item.calls_oi_value / item.calls_oi : 0;
+        item.puts_ltp = item.puts_oi > 0 ? item.puts_oi_value / item.puts_oi : 0;
+        item.calls_average_price = item.calls_ltp;
+        item.puts_average_price = item.puts_ltp;
+      });
     }
 
     res.json(oiData);
