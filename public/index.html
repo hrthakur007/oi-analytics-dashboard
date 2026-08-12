@@ -421,41 +421,6 @@
         </div>
       </section>
 
-      <!-- Auto ATM Straddle & VWAP Line Chart (Placed below Volume Chart) -->
-      <section class="vertical-chart-section glass-panel" id="card-straddle-chart">
-        <div class="section-title" style="flex-wrap: wrap; gap: 12px;">
-          <div class="title-details" style="display: flex; align-items: center; gap: 10px;">
-            <h3 id="straddle-chart-title">ATM Straddle & VWAP</h3>
-            <span class="badge font-mono" id="straddle-atm-badge" style="background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); font-size: 0.75rem; padding: 2px 8px; border-radius: 4px;">ATM: ----</span>
-          </div>
-          <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-            <!-- Mode Toggle: Auto ATM vs Fixed ATM -->
-            <div class="straddle-toggle-container" style="display: flex; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid var(--border-color); border-radius: 6px; padding: 2px;">
-              <button id="btn-straddle-auto" class="straddle-mode-btn active" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 4px; border: none; cursor: pointer; background: var(--primary-color); color: #ffffff;">Auto ATM</button>
-              <button id="btn-straddle-fixed" class="straddle-mode-btn" style="padding: 4px 10px; font-size: 0.75rem; font-weight: 700; border-radius: 4px; border: none; cursor: pointer; color: var(--text-secondary); background: transparent;">Fixed ATM</button>
-            </div>
-            <!-- Custom Legends -->
-            <div class="chart-legend-container" style="margin-top: 0;">
-              <div class="legend-item"><span class="legend-dot" style="background: #38bdf8; box-shadow: 0 0 6px #38bdf8;"></span>Straddle Premium</div>
-              <div class="legend-item"><span class="legend-dot" style="background: #fbbf24; box-shadow: 0 0 6px #fbbf24;"></span>Straddle VWAP</div>
-              <div class="legend-item"><span class="legend-dot" style="background: #c084fc; box-shadow: 0 0 6px #c084fc;"></span>Spot Price</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Live Metrics Bar -->
-        <div class="straddle-metrics-bar" style="display: flex; align-items: center; gap: 20px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 8px 16px; margin-bottom: 14px; font-family: var(--font-mono); font-size: 0.8rem; flex-wrap: wrap;">
-          <div><span style="color: var(--text-muted);">Current Premium:</span> <strong id="straddle-premium-val" style="color: #38bdf8;">₹---.--</strong></div>
-          <div><span style="color: var(--text-muted);">VWAP:</span> <strong id="straddle-vwap-val" style="color: #fbbf24;">₹---.--</strong></div>
-          <div><span style="color: var(--text-muted);">Diff from VWAP:</span> <strong id="straddle-diff-val">--.--</strong></div>
-          <div><span style="color: var(--text-muted);">Spot LTP:</span> <strong id="straddle-spot-val" style="color: #c084fc;">---.--</strong></div>
-        </div>
-
-        <div class="vertical-chart-container" style="height: 380px;">
-          <canvas id="straddleChart"></canvas>
-        </div>
-      </section>
-
     </main>
 
     <!-- Footer -->
