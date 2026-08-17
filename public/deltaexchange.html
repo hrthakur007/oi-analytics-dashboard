@@ -92,6 +92,10 @@
               <option value="40">40</option>
               <option value="all">All</option>
             </select>
+            <button id="btn-toggle-delta-colors" title="Customise Chart Colours"
+              style="padding: 6px 12px; font-size: 0.78rem; font-weight: 700; border-radius: 6px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #a5b4fc; cursor: pointer; white-space: nowrap; transition: background 0.2s;">
+              🎨 Colors
+            </button>
           </div>
         </div>
 
@@ -101,6 +105,28 @@
           <span id="delta-spot-price" style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 800; color: #38bdf8;">$---.--</span>
         </div>
 
+      </div>
+
+      <!-- Delta Chart Colour Picker Panel (Collapsible) -->
+      <div id="delta-color-picker-panel"
+        style="display:none; width: 100%; margin-top: 14px; background: rgba(17, 24, 39, 0.95); border: 1px solid var(--border-color); border-radius: 10px; padding: 12px 18px; gap: 16px; flex-wrap: wrap; align-items: center; justify-content: space-between; box-shadow: var(--shadow-md);">
+        <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+          <span style="font-size:0.78rem; font-weight:700; color:var(--text-primary); letter-spacing:0.5px; display: flex; align-items: center; gap: 6px;">
+            <span>🎨</span> CHART BAR COLOURS
+          </span>
+          <label class="color-picker-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
+            <input type="color" id="clr-delta-calls" value="#ef4444" title="Call OI Bar Colour" style="border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; background: none;">
+            <span>Call OI Bar</span>
+          </label>
+          <label class="color-picker-label" style="display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer;">
+            <input type="color" id="clr-delta-puts" value="#10b981" title="Put OI Bar Colour" style="border: none; width: 24px; height: 24px; border-radius: 4px; cursor: pointer; background: none;">
+            <span>Put OI Bar</span>
+          </label>
+        </div>
+        <button id="btn-reset-delta-colors"
+          style="padding: 4px 12px; font-size: 0.75rem; font-weight: 700; border-radius: 6px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: var(--text-secondary); cursor: pointer; transition: all 0.2s;">
+          ↺ Reset Defaults
+        </button>
       </div>
     </section>
 
@@ -113,10 +139,6 @@
       <div class="delta-metric-item">
         <span class="metric-label">CHG OI PCR</span>
         <span class="metric-val" id="delta-chg-oi-pcr" style="color: #38bdf8;">-.----</span>
-      </div>
-      <div class="delta-metric-item">
-        <span class="metric-label">Lot Size</span>
-        <span class="metric-val" id="delta-lot-size">-.---</span>
       </div>
       <div class="delta-metric-item">
         <span class="metric-label">Expected Range</span>
@@ -132,11 +154,11 @@
         <div class="section-title">
           <div class="title-details">
             <h3>Open Interest (OI) Bar Chart</h3>
-            <span class="subtitle">Calls (Red) vs Puts (Green) by Strike</span>
+            <span class="subtitle">Calls vs Puts Open Interest by Strike</span>
           </div>
           <div class="chart-legend-container">
-            <div class="legend-item"><span class="legend-dot" style="background: #ff4d4d;"></span>Call OI</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #00e676;"></span>Put OI</div>
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-call-dot" style="background: #ef4444;"></span>Call OI</div>
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-put-dot" style="background: #10b981;"></span>Put OI</div>
           </div>
         </div>
         <div class="vertical-chart-container" style="height: 380px;">

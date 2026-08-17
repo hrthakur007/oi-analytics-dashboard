@@ -7,24 +7,74 @@ document.addEventListener('DOMContentLoaded', () => {
   let rawOptionChainItems = [];
   let oiChartInstance = null;
 
+  const DEFAULT_DELTA_COLORS = {
+    calls: '#ef4444', // Red for Call OI
+    puts: '#10b981'   // Green for Put OI
+  };
+
+  let deltaChartColors = { ...DEFAULT_DELTA_COLORS };
+
   // DOM Elements
-  const symbolSelect      = document.getElementById('delta-symbol-select');
-  const expirySelect      = document.getElementById('delta-expiry-select');
-  const strikeRangeSelect = document.getElementById('delta-strike-range-select');
-  const btnRefresh        = document.getElementById('btn-manual-refresh');
-  const spotPriceEl       = document.getElementById('delta-spot-price');
-  const pcrEl             = document.getElementById('delta-pcr');
-  const chgOiPcrEl        = document.getElementById('delta-chg-oi-pcr');
-  const lotSizeEl         = document.getElementById('delta-lot-size');
-  const expRangeEl        = document.getElementById('delta-expected-range');
-  const tableBodyEl       = document.getElementById('delta-table-body');
+  const symbolSelect        = document.getElementById('delta-symbol-select');
+  const expirySelect        = document.getElementById('delta-expiry-select');
+  const strikeRangeSelect   = document.getElementById('delta-strike-range-select');
+  const btnRefresh          = document.getElementById('btn-manual-refresh');
+  const spotPriceEl         = document.getElementById('delta-spot-price');
+  const pcrEl               = document.getElementById('delta-pcr');
+  const chgOiPcrEl          = document.getElementById('delta-chg-oi-pcr');
+  const expRangeEl          = document.getElementById('delta-expected-range');
+  const tableBodyEl         = document.getElementById('delta-table-body');
+  
+  const btnToggleColors     = document.getElementById('btn-toggle-delta-colors');
+  const colorPanel          = document.getElementById('delta-color-picker-panel');
+  const inputClrCalls       = document.getElementById('clr-delta-calls');
+  const inputClrPuts        = document.getElementById('clr-delta-puts');
+  const btnResetColors      = document.getElementById('btn-reset-delta-colors');
+  const legendCallDot       = document.getElementById('delta-legend-call-dot');
+  const legendPutDot        = document.getElementById('delta-legend-put-dot');
 
   // Initialize
   init();
 
   async function init() {
+    loadSavedColors();
     setupEventListeners();
     await fetchSymbolExpiryList();
+  }
+
+  function loadSavedColors() {
+    try {
+      const saved = localStorage.getItem('delta_chart_colors');
+      if (saved) {
+        deltaChartColors = { ...DEFAULT_DELTA_COLORS, ...JSON.parse(saved) };
+      }
+    } catch (e) {
+      deltaChartColors = { ...DEFAULT_DELTA_COLORS };
+    }
+  }
+
+  function saveColors() {
+    try {
+      localStorage.setItem('delta_chart_colors', JSON.stringify(deltaChartColors));
+    } catch (e) {}
+  }
+
+  function applyColors() {
+    if (inputClrCalls) inputClrCalls.value = deltaChartColors.calls;
+    if (inputClrPuts)  inputClrPuts.value  = deltaChartColors.puts;
+
+    if (legendCallDot) legendCallDot.style.background = deltaChartColors.calls;
+    if (legendPutDot)  legendPutDot.style.background  = deltaChartColors.puts;
+
+    if (oiChartInstance) {
+      oiChartInstance.data.datasets[0].backgroundColor = deltaChartColors.calls;
+      oiChartInstance.data.datasets[0].borderColor = deltaChartColors.calls;
+      oiChartInstance.data.datasets[1].backgroundColor = deltaChartColors.puts;
+      oiChartInstance.data.datasets[1].borderColor = deltaChartColors.puts;
+      oiChartInstance.update();
+    }
+
+    saveColors();
   }
 
   function setupEventListeners() {
@@ -43,6 +93,38 @@ document.addEventListener('DOMContentLoaded', () => {
       strikeRangeSelect.addEventListener('change', (e) => {
         selectedStrikeCount = e.target.value;
         filterAndRender();
+      });
+    }
+
+    if (btnToggleColors && colorPanel) {
+      btnToggleColors.addEventListener('click', () => {
+        const isOpen = colorPanel.style.display === 'flex';
+        colorPanel.style.display = isOpen ? 'none' : 'flex';
+        btnToggleColors.style.background = isOpen
+          ? 'rgba(99,102,241,0.15)'
+          : 'rgba(99,102,241,0.35)';
+      });
+    }
+
+    if (inputClrCalls) {
+      inputClrCalls.addEventListener('input', (e) => {
+        deltaChartColors.calls = e.target.value;
+        applyColors();
+      });
+    }
+
+    if (inputClrPuts) {
+      inputClrPuts.addEventListener('input', (e) => {
+        deltaChartColors.puts = e.target.value;
+        applyColors();
+      });
+    }
+
+    if (btnResetColors) {
+      btnResetColors.addEventListener('click', () => {
+        deltaChartColors = { ...DEFAULT_DELTA_COLORS };
+        try { localStorage.removeItem('delta_chart_colors'); } catch(e) {}
+        applyColors();
       });
     }
 
@@ -155,13 +237,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const firstItem = items[0];
     const spotPrice = firstItem.spot_price || 0;
-    const lotSize   = firstItem.contract_value || 0.001;
 
     // Spot Price UI
     spotPriceEl.textContent = `$${spotPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-    // Lot Size UI
-    lotSizeEl.textContent = lotSize.toString();
 
     // Summary Totals over full chain
     let totalCallOiUsd = 0;
@@ -205,7 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterAndRender();
   }
 
-  // Filter strikes based on strikeRangeSelect and render Chart + Table
+  // Filter strikes for Chart ONLY; Option Chain Table ALWAYS shows ALL strikes!
   function filterAndRender() {
     if (!rawOptionChainItems || rawOptionChainItems.length === 0) return;
 
@@ -226,7 +304,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    let displayItems = rawOptionChainItems;
+    let displayChartItems = rawOptionChainItems;
 
     if (selectedStrikeCount !== 'all') {
       const targetCount = parseInt(selectedStrikeCount, 10);
@@ -240,12 +318,17 @@ document.addEventListener('DOMContentLoaded', () => {
         startIdx = Math.max(0, endIdx - targetCount);
       }
 
-      displayItems = rawOptionChainItems.slice(startIdx, endIdx);
+      displayChartItems = rawOptionChainItems.slice(startIdx, endIdx);
     }
 
-    // Render Chart and Table with filtered display items
-    renderCharts(displayItems, spotPrice, atmStrike);
-    renderOptionChainTable(displayItems, spotPrice, atmStrike);
+    // Render Chart with filtered items
+    renderCharts(displayChartItems, spotPrice, atmStrike);
+
+    // Option Chain Table ALWAYS shows ALL strikes (rawOptionChainItems)
+    renderOptionChainTable(rawOptionChainItems, spotPrice, atmStrike);
+
+    // Apply color settings to chart and legend
+    applyColors();
   }
 
   // Calculate Days to Expiry
@@ -286,15 +369,15 @@ document.addEventListener('DOMContentLoaded', () => {
             { 
               label: 'Call OI', 
               data: callOi, 
-              backgroundColor: '#ef4444', // Red for Call OI (Resistance)
-              borderColor: '#b91c1c', 
+              backgroundColor: deltaChartColors.calls, 
+              borderColor: deltaChartColors.calls, 
               borderRadius: 4 
             },
             { 
               label: 'Put OI', 
               data: putOi, 
-              backgroundColor: '#10b981', // Green for Put OI (Support)
-              borderColor: '#047857', 
+              backgroundColor: deltaChartColors.puts, 
+              borderColor: deltaChartColors.puts, 
               borderRadius: 4 
             }
           ]
@@ -362,8 +445,8 @@ document.addEventListener('DOMContentLoaded', () => {
           ctx.textBaseline = isPositive ? 'bottom' : 'top';
           const yPos = isPositive ? bar.y - padding : bar.y + padding;
 
-          // Dataset 0 = Call OI (Red #ff8080), Dataset 1 = Put OI (Green #80ffc2)
-          ctx.fillStyle = datasetIndex === 0 ? '#ff8080' : '#80ffc2';
+          // Dataset 0 = Call OI, Dataset 1 = Put OI
+          ctx.fillStyle = datasetIndex === 0 ? deltaChartColors.calls : deltaChartColors.puts;
           ctx.fillText(label, bar.x, yPos);
         });
       });
