@@ -182,6 +182,61 @@ app.get('/api/mcx-oi-data', async (req, res) => {
 });
 
 
+// Delta Exchange HTML Route
+app.get('/deltaexchange', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'deltaexchange.html'));
+});
+
+// Delta Exchange Symbol & Expiry List Proxy API
+app.get('/api/delta/symbol-expiry-list', async (req, res) => {
+  try {
+    const url = 'https://webapi.niftytrader.in/webapi/Symbol/delta-symbol-expiry-list';
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json, text/plain, */*'
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`Delta symbol expiry list API returned status ${response.status}`);
+    }
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching Delta symbol expiry list:', error.message);
+    res.status(500).json({ error: 'Failed to fetch Delta symbol expiry list', details: error.message });
+  }
+});
+
+// Delta Exchange Option Chain Proxy API
+app.get('/api/delta/option-chain', async (req, res) => {
+  try {
+    const symbol = req.query.symbol || 'btc';
+    const expiryDate = req.query.expiryDate || '';
+    const atmBelow = req.query.atmBelow || '0';
+    const atmAbove = req.query.atmAbove || '0';
+
+    const url = `https://webapi.niftytrader.in/webapi/Option/delta-option-chain?symbol=${encodeURIComponent(symbol)}&expiryDate=${encodeURIComponent(expiryDate)}&atmBelow=${atmBelow}&atmAbove=${atmAbove}`;
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': USER_AGENT,
+        'Accept': 'application/json, text/plain, */*'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Delta option chain API returned status ${response.status}`);
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching Delta option chain:', error.message);
+    res.status(500).json({ error: 'Failed to fetch Delta option chain', details: error.message });
+  }
+});
+
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

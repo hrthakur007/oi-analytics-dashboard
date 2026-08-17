@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delta Exchange Crypto Options - OI Analytics</title>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+
+  <!-- Background decorative elements -->
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="bg-glow bg-glow-3"></div>
+
+  <div class="app-container">
+
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-logo">
+        <div class="logo-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M13 2L3 14H12L11 22L21 10H12L13 2Z" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="logo-text">
+          <h1>Delta Exchange <span class="text-gradient">Crypto Options</span></h1>
+          <p id="app-subtitle">Real-time Options Chain & Greeks Tracker</p>
+        </div>
+      </div>
+
+      <!-- Global Navigation -->
+      <nav class="app-nav">
+        <a href="/" class="nav-link">
+          <span>🇮🇳 Indian Markets</span>
+        </a>
+        <a href="/deltaexchange" class="nav-link active">
+          <span>⚡ Delta Exchange</span>
+        </a>
+      </nav>
+
+      <div class="header-controls">
+        <div class="refresh-container" style="display: flex; align-items: center; gap: 10px;">
+          <span class="live-indicator-dot" style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981;"></span>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Auto-refreshes every 2 min</span>
+          <button id="btn-manual-refresh" class="range-btn" style="padding: 6px 12px; cursor: pointer;">↻ Refresh</button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Toolbar: Symbol & Expiry Selection -->
+    <section class="glass-panel" style="padding: 16px 24px; margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+        
+        <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+          <!-- Symbol Selector -->
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="delta-symbol-select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">Symbol:</label>
+            <select id="delta-symbol-select" class="range-select" style="font-weight: 700; font-size: 0.95rem; padding: 6px 14px; min-width: 110px;">
+              <option value="BTC" selected>BTC</option>
+              <option value="ETH">ETH</option>
+              <option value="XAUT">XAUT</option>
+            </select>
+          </div>
+
+          <!-- Expiry Date Selector -->
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="delta-expiry-select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">Expiry Date:</label>
+            <select id="delta-expiry-select" class="range-select" style="font-weight: 600; font-size: 0.9rem; padding: 6px 14px; min-width: 160px;">
+              <!-- Populated dynamically via JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Spot Price Header Display -->
+        <div style="display: flex; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); padding: 8px 16px; border-radius: 8px;">
+          <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Spot Price:</span>
+          <span id="delta-spot-price" style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 800; color: #38bdf8;">$---.--</span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Summary Metrics Bar -->
+    <div class="delta-metrics-bar">
+      <div class="delta-metric-item">
+        <span class="metric-label">PCR</span>
+        <span class="metric-val" id="delta-pcr" style="color: #6366f1;">-.----</span>
+      </div>
+      <div class="delta-metric-item">
+        <span class="metric-label">CHG OI PCR</span>
+        <span class="metric-val" id="delta-chg-oi-pcr" style="color: #38bdf8;">-.----</span>
+      </div>
+      <div class="delta-metric-item">
+        <span class="metric-label">Lot Size</span>
+        <span class="metric-val" id="delta-lot-size">-.---</span>
+      </div>
+      <div class="delta-metric-item">
+        <span class="metric-label">Expected Range</span>
+        <span class="metric-val" id="delta-expected-range" style="color: #fbbf24;">------ - ------</span>
+      </div>
+      <div class="delta-metric-item">
+        <span class="metric-label">Remaining Expiry Time</span>
+        <span class="metric-val" id="delta-expiry-time" style="color: #f43f5e;">0d:00h:00m</span>
+      </div>
+    </div>
+
+    <!-- Charts Section: Open Interest & Volume Bar Charts -->
+    <main class="dashboard-grid">
+      
+      <!-- Open Interest Bar Chart -->
+      <section class="vertical-chart-section glass-panel">
+        <div class="section-title">
+          <div class="title-details">
+            <h3>Open Interest (OI) Bar Chart</h3>
+            <span class="subtitle">Calls (Green) vs Puts (Red) by Strike</span>
+          </div>
+          <div class="chart-legend-container">
+            <div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span>Call OI</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #ef4444;"></span>Put OI</div>
+          </div>
+        </div>
+        <div class="vertical-chart-container" style="height: 340px;">
+          <canvas id="deltaOiChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Volume Bar Chart -->
+      <section class="vertical-chart-section glass-panel">
+        <div class="section-title">
+          <div class="title-details">
+            <h3>Volume Bar Chart</h3>
+            <span class="subtitle">Calls (Green) vs Puts (Red) Traded Volume</span>
+          </div>
+          <div class="chart-legend-container">
+            <div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span>Call Volume</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #ef4444;"></span>Put Volume</div>
+          </div>
+        </div>
+        <div class="vertical-chart-container" style="height: 340px;">
+          <canvas id="deltaVolumeChart"></canvas>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Full Option Chain Table Section -->
+    <section class="glass-panel" style="padding: 20px; margin-top: 24px;">
+      <div class="section-title" style="margin-bottom: 16px;">
+        <div class="title-details">
+          <h3>Full Option Chain Table</h3>
+          <span class="subtitle">Live Greeks, Mark Prices, IV, 6H Change & Builtup</span>
+        </div>
+      </div>
+
+      <div class="delta-table-wrapper">
+        <table class="delta-table" id="deltaOptionChainTable">
+          <thead>
+            <tr class="super-header">
+              <th colspan="9" class="calls-header">CALLS</th>
+              <th class="strike-header">STRIKE</th>
+              <th colspan="9" class="puts-header">PUTS</th>
+            </tr>
+            <tr>
+              <!-- CALLS -->
+              <th>DELTA</th>
+              <th>THETA</th>
+              <th>BUILTUP</th>
+              <th>VOLUME</th>
+              <th>OI</th>
+              <th>CHG OI (6H)</th>
+              <th>MARK (PRICE/IV)</th>
+              <th>24H MARK CHG %</th>
+              <th>LTP (CHG %)</th>
+              
+              <!-- STRIKE -->
+              <th>STRIKE ↑</th>
+
+              <!-- PUTS -->
+              <th>LTP (CHG %)</th>
+              <th>24H MARK CHG %</th>
+              <th>MARK (PRICE/IV)</th>
+              <th>CHG OI (6H)</th>
+              <th>OI</th>
+              <th>VOLUME</th>
+              <th>BUILTUP</th>
+              <th>THETA</th>
+              <th>DELTA</th>
+            </tr>
+          </thead>
+          <tbody id="delta-table-body">
+            <!-- Table rows populated dynamically via deltaexchange.js -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Delta Exchange Option Analytics. Live market data auto-refreshes every 2 minutes.</p>
+      <p class="copyright">© 2026 Antigravity Analytics</p>
+    </footer>
+
+  </div>
+
+  <!-- Delta Exchange JS Logic -->
+  <script src="deltaexchange.js"></script>
+</body>
+
+</html>

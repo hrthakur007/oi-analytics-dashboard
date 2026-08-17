@@ -1036,4 +1036,179 @@ input:checked + .switch-slider:before {
   background-color: #4f46e5;
 }
 
+/* ----------------------------------------------------
+   Navigation Header Tabs
+   ---------------------------------------------------- */
+.app-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  padding: 4px;
+  border-radius: 10px;
+  backdrop-filter: blur(12px);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all var(--transition-fast);
+}
+
+.nav-link:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+  color: #ffffff;
+  background: var(--primary-color);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.3);
+}
+
+/* ----------------------------------------------------
+   Delta Exchange Dedicated Styling
+   ---------------------------------------------------- */
+.delta-metrics-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 12px 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  backdrop-filter: blur(12px);
+}
+
+.delta-metric-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.delta-metric-item .metric-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.delta-metric-item .metric-val {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.delta-table-wrapper {
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: rgba(15, 23, 42, 0.8);
+}
+
+.delta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  white-space: nowrap;
+}
+
+.delta-table thead th {
+  background: #0f172a;
+  color: var(--text-secondary);
+  padding: 10px 8px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.72rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.delta-table thead tr.super-header th {
+  font-size: 0.82rem;
+  padding: 6px;
+}
+
+.delta-table thead tr.super-header th.calls-header {
+  color: #22c55e;
+  border-right: 1px solid var(--border-color);
+}
+
+.delta-table thead tr.super-header th.puts-header {
+  color: #ef4444;
+  border-left: 1px solid var(--border-color);
+}
+
+.delta-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  transition: background var(--transition-fast);
+}
+
+.delta-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.delta-table tbody tr.atm-row {
+  background: rgba(99, 102, 241, 0.15) !important;
+  border-top: 1px solid #6366f1;
+  border-bottom: 1px solid #6366f1;
+}
+
+.delta-table tbody td {
+  padding: 6px 8px;
+  text-align: right;
+}
+
+.delta-table tbody td.strike-cell {
+  text-align: center;
+  font-weight: 800;
+  background: #1e293b;
+  color: #ffffff;
+  border-left: 1px solid var(--border-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.delta-table tbody td.calls-itm {
+  background: rgba(34, 197, 94, 0.04);
+}
+
+.delta-table tbody td.puts-itm {
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.builtup-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.builtup-badge.buying, .builtup-badge.writing-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.builtup-badge.covering, .builtup-badge.unwinding {
+  background: rgba(244, 63, 94, 0.15);
+  color: #fb7185;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+}
+
+.text-green { color: #4ade80; }
+.text-red { color: #f87171; }
+
 
