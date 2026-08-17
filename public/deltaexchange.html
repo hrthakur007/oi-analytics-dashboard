@@ -81,6 +81,18 @@
               <!-- Populated dynamically via JS -->
             </select>
           </div>
+
+          <!-- Strike Range Selector -->
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <label for="delta-strike-range-select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">Strikes:</label>
+            <select id="delta-strike-range-select" class="range-select" style="font-weight: 600; font-size: 0.9rem; padding: 6px 14px; min-width: 100px;">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="30">30</option>
+              <option value="40">40</option>
+              <option value="all">All</option>
+            </select>
+          </div>
         </div>
 
         <!-- Spot Price Header Display -->
@@ -110,46 +122,25 @@
         <span class="metric-label">Expected Range</span>
         <span class="metric-val" id="delta-expected-range" style="color: #fbbf24;">------ - ------</span>
       </div>
-      <div class="delta-metric-item">
-        <span class="metric-label">Remaining Expiry Time</span>
-        <span class="metric-val" id="delta-expiry-time" style="color: #f43f5e;">0d:00h:00m</span>
-      </div>
     </div>
 
-    <!-- Charts Section: Open Interest & Volume Bar Charts -->
-    <main class="dashboard-grid">
+    <!-- Charts Section: Open Interest Bar Chart (Full Width) -->
+    <main class="dashboard-grid" style="grid-template-columns: 1fr;">
       
       <!-- Open Interest Bar Chart -->
-      <section class="vertical-chart-section glass-panel">
+      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1;">
         <div class="section-title">
           <div class="title-details">
             <h3>Open Interest (OI) Bar Chart</h3>
-            <span class="subtitle">Calls (Green) vs Puts (Red) by Strike</span>
+            <span class="subtitle">Calls (Red) vs Puts (Green) by Strike</span>
           </div>
           <div class="chart-legend-container">
-            <div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span>Call OI</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #ef4444;"></span>Put OI</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #ff4d4d;"></span>Call OI</div>
+            <div class="legend-item"><span class="legend-dot" style="background: #00e676;"></span>Put OI</div>
           </div>
         </div>
-        <div class="vertical-chart-container" style="height: 340px;">
+        <div class="vertical-chart-container" style="height: 380px;">
           <canvas id="deltaOiChart"></canvas>
-        </div>
-      </section>
-
-      <!-- Volume Bar Chart -->
-      <section class="vertical-chart-section glass-panel">
-        <div class="section-title">
-          <div class="title-details">
-            <h3>Volume Bar Chart</h3>
-            <span class="subtitle">Calls (Green) vs Puts (Red) Traded Volume</span>
-          </div>
-          <div class="chart-legend-container">
-            <div class="legend-item"><span class="legend-dot" style="background: #22c55e;"></span>Call Volume</div>
-            <div class="legend-item"><span class="legend-dot" style="background: #ef4444;"></span>Put Volume</div>
-          </div>
-        </div>
-        <div class="vertical-chart-container" style="height: 340px;">
-          <canvas id="deltaVolumeChart"></canvas>
         </div>
       </section>
 

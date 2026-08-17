@@ -3,20 +3,21 @@ document.addEventListener('DOMContentLoaded', () => {
   let symbolExpiriesMap = {}; // Maps Symbol -> Array of expiry date strings
   let currentSymbol = 'BTC';
   let currentExpiry = '';
+  let selectedStrikeCount = '20';
+  let rawOptionChainItems = [];
   let oiChartInstance = null;
-  let volumeChartInstance = null;
 
   // DOM Elements
-  const symbolSelect = document.getElementById('delta-symbol-select');
-  const expirySelect = document.getElementById('delta-expiry-select');
-  const btnRefresh   = document.getElementById('btn-manual-refresh');
-  const spotPriceEl  = document.getElementById('delta-spot-price');
-  const pcrEl        = document.getElementById('delta-pcr');
-  const chgOiPcrEl   = document.getElementById('delta-chg-oi-pcr');
-  const lotSizeEl    = document.getElementById('delta-lot-size');
-  const expRangeEl   = document.getElementById('delta-expected-range');
-  const expTimeEl    = document.getElementById('delta-expiry-time');
-  const tableBodyEl  = document.getElementById('delta-table-body');
+  const symbolSelect      = document.getElementById('delta-symbol-select');
+  const expirySelect      = document.getElementById('delta-expiry-select');
+  const strikeRangeSelect = document.getElementById('delta-strike-range-select');
+  const btnRefresh        = document.getElementById('btn-manual-refresh');
+  const spotPriceEl       = document.getElementById('delta-spot-price');
+  const pcrEl             = document.getElementById('delta-pcr');
+  const chgOiPcrEl        = document.getElementById('delta-chg-oi-pcr');
+  const lotSizeEl         = document.getElementById('delta-lot-size');
+  const expRangeEl        = document.getElementById('delta-expected-range');
+  const tableBodyEl       = document.getElementById('delta-table-body');
 
   // Initialize
   init();
@@ -37,6 +38,13 @@ document.addEventListener('DOMContentLoaded', () => {
       currentExpiry = e.target.value;
       fetchOptionChain();
     });
+
+    if (strikeRangeSelect) {
+      strikeRangeSelect.addEventListener('change', (e) => {
+        selectedStrikeCount = e.target.value;
+        filterAndRender();
+      });
+    }
 
     btnRefresh.addEventListener('click', () => {
       fetchOptionChain();
@@ -139,10 +147,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Process and Render Option Chain Data
+  // Process and Prepare Summary Metrics
   function processOptionChainData(items) {
     // Sort items by strike price ascending
     items.sort((a, b) => a.strike_price - b.strike_price);
+    rawOptionChainItems = items;
 
     const firstItem = items[0];
     const spotPrice = firstItem.spot_price || 0;
@@ -154,15 +163,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lot Size UI
     lotSizeEl.textContent = lotSize.toString();
 
-    // Summary Totals
+    // Summary Totals over full chain
     let totalCallOiUsd = 0;
     let totalPutOiUsd  = 0;
     let totalCallChgOiUsd = 0;
     let totalPutChgOiUsd  = 0;
     let sumCallIv = 0, callIvCount = 0;
-
-    let closestDiff = Infinity;
-    let atmStrike = items[0].strike_price;
 
     items.forEach(item => {
       const callOiUsd = item.calls_oi_value_usd || 0;
@@ -176,13 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (item.calls_quotes_mark_iv > 0) {
         sumCallIv += item.calls_quotes_mark_iv;
         callIvCount++;
-      }
-
-      // ATM Strike Identification
-      const diff = Math.abs(item.strike_price - spotPrice);
-      if (diff < closestDiff) {
-        closestDiff = diff;
-        atmStrike = item.strike_price;
       }
     });
 
@@ -202,14 +201,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const upperRange = Math.round((spotPrice + expectedMove) / 100) * 100;
     expRangeEl.textContent = `${lowerRange.toLocaleString()} - ${upperRange.toLocaleString()}`;
 
-    // Expiry Countdown UI
-    updateExpiryCountdown(currentExpiry);
+    // Filter and Render UI components
+    filterAndRender();
+  }
 
-    // Render Charts
-    renderCharts(items, atmStrike);
+  // Filter strikes based on strikeRangeSelect and render Chart + Table
+  function filterAndRender() {
+    if (!rawOptionChainItems || rawOptionChainItems.length === 0) return;
 
-    // Render Option Chain Table
-    renderOptionChainTable(items, spotPrice, atmStrike);
+    const firstItem = rawOptionChainItems[0];
+    const spotPrice = firstItem.spot_price || 0;
+
+    // Find ATM Strike
+    let closestDiff = Infinity;
+    let atmIndex = 0;
+    let atmStrike = rawOptionChainItems[0].strike_price;
+
+    rawOptionChainItems.forEach((item, index) => {
+      const diff = Math.abs(item.strike_price - spotPrice);
+      if (diff < closestDiff) {
+        closestDiff = diff;
+        atmIndex = index;
+        atmStrike = item.strike_price;
+      }
+    });
+
+    let displayItems = rawOptionChainItems;
+
+    if (selectedStrikeCount !== 'all') {
+      const targetCount = parseInt(selectedStrikeCount, 10);
+      const half = Math.floor(targetCount / 2);
+
+      let startIdx = Math.max(0, atmIndex - half);
+      let endIdx = startIdx + targetCount;
+
+      if (endIdx > rawOptionChainItems.length) {
+        endIdx = rawOptionChainItems.length;
+        startIdx = Math.max(0, endIdx - targetCount);
+      }
+
+      displayItems = rawOptionChainItems.slice(startIdx, endIdx);
+    }
+
+    // Render Chart and Table with filtered display items
+    renderCharts(displayItems, spotPrice, atmStrike);
+    renderOptionChainTable(displayItems, spotPrice, atmStrike);
   }
 
   // Calculate Days to Expiry
@@ -221,37 +257,16 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(diffMs / (1000 * 60 * 60 * 24), 0.1);
   }
 
-  // Expiry Countdown Timer
-  function updateExpiryCountdown(expiryDateStr) {
-    if (!expiryDateStr) return;
-    const expDate = new Date(expiryDateStr + 'T23:59:59Z');
-    const now = new Date();
-    let diffMs = expDate - now;
-    if (diffMs < 0) diffMs = 0;
-
-    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-
-    expTimeEl.textContent = `${days}d:${String(hours).padStart(2, '0')}h:${String(mins).padStart(2, '0')}m`;
-  }
-
-  // Render Charts
-  function renderCharts(items, atmStrike) {
-    const firstItem = items[0];
-    const spotPrice = firstItem ? (firstItem.spot_price || 0) : 0;
+  // Render Open Interest Bar Chart
+  function renderCharts(items, spotPrice, atmStrike) {
     const strikes = items.map(i => i.strike_price);
     const callOi  = items.map(i => i.calls_oi_value_usd || 0);
     const putOi   = items.map(i => i.puts_oi_value_usd || 0);
-
-    const callVol = items.map(i => i.calls_turnover_usd || 0);
-    const putVol  = items.map(i => i.puts_turnover_usd || 0);
 
     // Save globals for spot line plugin
     window.currentDeltaSpotPrice = spotPrice;
     window.currentDeltaStrikes = strikes;
 
-    // 1. OI Bar Chart
     const ctxOi = document.getElementById('deltaOiChart').getContext('2d');
     if (oiChartInstance) {
       oiChartInstance.data.labels = strikes;
@@ -268,43 +283,29 @@ document.addEventListener('DOMContentLoaded', () => {
         data: {
           labels: strikes,
           datasets: [
-            { label: 'Call OI', data: callOi, backgroundColor: '#22c55e', borderRadius: 4 },
-            { label: 'Put OI', data: putOi, backgroundColor: '#ef4444', borderRadius: 4 }
+            { 
+              label: 'Call OI', 
+              data: callOi, 
+              backgroundColor: '#ef4444', // Red for Call OI (Resistance)
+              borderColor: '#b91c1c', 
+              borderRadius: 4 
+            },
+            { 
+              label: 'Put OI', 
+              data: putOi, 
+              backgroundColor: '#10b981', // Green for Put OI (Support)
+              borderColor: '#047857', 
+              borderRadius: 4 
+            }
           ]
         },
-        options: getChartOptions('Open Interest ($)', strikes, atmStrike),
-        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
-      });
-    }
-
-    // 2. Volume Bar Chart
-    const ctxVol = document.getElementById('deltaVolumeChart').getContext('2d');
-    if (volumeChartInstance) {
-      volumeChartInstance.data.labels = strikes;
-      volumeChartInstance.data.datasets[0].data = callVol;
-      volumeChartInstance.data.datasets[1].data = putVol;
-      volumeChartInstance.options.scales.x.ticks.callback = function(val, idx) {
-        const s = strikes[idx];
-        return s === atmStrike ? `${s} (ATM)` : s;
-      };
-      volumeChartInstance.update();
-    } else {
-      volumeChartInstance = new Chart(ctxVol, {
-        type: 'bar',
-        data: {
-          labels: strikes,
-          datasets: [
-            { label: 'Call Volume', data: callVol, backgroundColor: '#22c55e', borderRadius: 4 },
-            { label: 'Put Volume', data: putVol, backgroundColor: '#ef4444', borderRadius: 4 }
-          ]
-        },
-        options: getChartOptions('Volume ($)', strikes, atmStrike),
+        options: getChartOptions(strikes, atmStrike),
         plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
       });
     }
   }
 
-  function getChartOptions(yTitle, strikes, atmStrike) {
+  function getChartOptions(strikes, atmStrike) {
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -338,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Data Labels Plugin for Delta Exchange Bar Charts
+  // Data Labels Plugin for Delta Exchange Bar Chart
   const deltaDatalabelsPlugin = {
     id: 'deltaDatalabels',
     afterDatasetsDraw(chart) {
@@ -361,7 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
           ctx.textBaseline = isPositive ? 'bottom' : 'top';
           const yPos = isPositive ? bar.y - padding : bar.y + padding;
 
-          ctx.fillStyle = datasetIndex === 0 ? '#4ade80' : '#f87171';
+          // Dataset 0 = Call OI (Red #ff8080), Dataset 1 = Put OI (Green #80ffc2)
+          ctx.fillStyle = datasetIndex === 0 ? '#ff8080' : '#80ffc2';
           ctx.fillText(label, bar.x, yPos);
         });
       });
