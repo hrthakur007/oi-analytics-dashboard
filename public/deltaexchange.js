@@ -238,6 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Render Charts
   function renderCharts(items, atmStrike) {
+    const firstItem = items[0];
+    const spotPrice = firstItem ? (firstItem.spot_price || 0) : 0;
     const strikes = items.map(i => i.strike_price);
     const callOi  = items.map(i => i.calls_oi_value_usd || 0);
     const putOi   = items.map(i => i.puts_oi_value_usd || 0);
@@ -245,12 +247,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const callVol = items.map(i => i.calls_turnover_usd || 0);
     const putVol  = items.map(i => i.puts_turnover_usd || 0);
 
+    // Save globals for spot line plugin
+    window.currentDeltaSpotPrice = spotPrice;
+    window.currentDeltaStrikes = strikes;
+
     // 1. OI Bar Chart
     const ctxOi = document.getElementById('deltaOiChart').getContext('2d');
     if (oiChartInstance) {
       oiChartInstance.data.labels = strikes;
       oiChartInstance.data.datasets[0].data = callOi;
       oiChartInstance.data.datasets[1].data = putOi;
+      oiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
+        const s = strikes[idx];
+        return s === atmStrike ? `${s} (ATM)` : s;
+      };
       oiChartInstance.update();
     } else {
       oiChartInstance = new Chart(ctxOi, {
@@ -262,7 +272,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { label: 'Put OI', data: putOi, backgroundColor: '#ef4444', borderRadius: 4 }
           ]
         },
-        options: getChartOptions('Open Interest ($)', strikes, atmStrike)
+        options: getChartOptions('Open Interest ($)', strikes, atmStrike),
+        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
       });
     }
 
@@ -272,6 +283,10 @@ document.addEventListener('DOMContentLoaded', () => {
       volumeChartInstance.data.labels = strikes;
       volumeChartInstance.data.datasets[0].data = callVol;
       volumeChartInstance.data.datasets[1].data = putVol;
+      volumeChartInstance.options.scales.x.ticks.callback = function(val, idx) {
+        const s = strikes[idx];
+        return s === atmStrike ? `${s} (ATM)` : s;
+      };
       volumeChartInstance.update();
     } else {
       volumeChartInstance = new Chart(ctxVol, {
@@ -283,7 +298,8 @@ document.addEventListener('DOMContentLoaded', () => {
             { label: 'Put Volume', data: putVol, backgroundColor: '#ef4444', borderRadius: 4 }
           ]
         },
-        options: getChartOptions('Volume ($)', strikes, atmStrike)
+        options: getChartOptions('Volume ($)', strikes, atmStrike),
+        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
       });
     }
   }
@@ -292,19 +308,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 20, bottom: 10 } },
+      layout: { padding: { top: 45, bottom: 10 } },
       plugins: {
         legend: { display: false },
-        tooltip: {
-          backgroundColor: 'rgba(15, 23, 42, 0.95)',
-          titleColor: '#94a3b8',
-          bodyColor: '#ffffff',
-          callbacks: {
-            label: function(ctx) {
-              return `${ctx.dataset.label}: ${formatUsd(ctx.parsed.y)}`;
-            }
-          }
-        }
+        tooltip: { enabled: false }
       },
       scales: {
         x: {
@@ -319,6 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         },
         y: {
+          grace: '20%',
           grid: { color: 'rgba(255,255,255,0.05)' },
           ticks: {
             color: '#94a3b8',
@@ -329,6 +337,135 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
   }
+
+  // Data Labels Plugin for Delta Exchange Bar Charts
+  const deltaDatalabelsPlugin = {
+    id: 'deltaDatalabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.font = 'bold 10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        if (meta.hidden) return;
+
+        meta.data.forEach((bar, index) => {
+          const val = dataset.data[index];
+          if (val === undefined || val === null || val === 0) return;
+
+          const label = formatUsd(val);
+          const isPositive = val >= 0;
+          const padding = 6;
+          ctx.textBaseline = isPositive ? 'bottom' : 'top';
+          const yPos = isPositive ? bar.y - padding : bar.y + padding;
+
+          ctx.fillStyle = datasetIndex === 0 ? '#4ade80' : '#f87171';
+          ctx.fillText(label, bar.x, yPos);
+        });
+      });
+      ctx.restore();
+    }
+  };
+
+  // Spot Line & ATM Badges Plugin for Delta Exchange
+  const deltaSpotLinePlugin = {
+    id: 'deltaSpotLine',
+    afterDraw(chart) {
+      const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+      if (!x || !window.currentDeltaSpotPrice || !window.currentDeltaStrikes) return;
+
+      const spot = window.currentDeltaSpotPrice;
+      const strikes = window.currentDeltaStrikes;
+
+      let idxA = -1;
+      let idxB = -1;
+      for (let i = 0; i < strikes.length - 1; i++) {
+        if (spot >= strikes[i] && spot <= strikes[i + 1]) {
+          idxA = i;
+          idxB = i + 1;
+          break;
+        }
+      }
+
+      let xPixel = null;
+      if (idxA !== -1 && idxB !== -1) {
+        const pixelA = x.getPixelForTick(idxA);
+        const pixelB = x.getPixelForTick(idxB);
+        const fraction = (spot - strikes[idxA]) / (strikes[idxB] - strikes[idxA]);
+        xPixel = pixelA + (pixelB - pixelA) * fraction;
+      } else {
+        let closestDiff = Infinity;
+        let closestIdx = -1;
+        for (let i = 0; i < strikes.length; i++) {
+          const d = Math.abs(strikes[i] - spot);
+          if (d < closestDiff) {
+            closestDiff = d;
+            closestIdx = i;
+          }
+        }
+        if (closestIdx !== -1) {
+          xPixel = x.getPixelForTick(closestIdx);
+        }
+      }
+
+      if (xPixel === null) return;
+
+      ctx.save();
+      ctx.strokeStyle = '#f97316';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(xPixel, top);
+      ctx.lineTo(xPixel, bottom);
+      ctx.stroke();
+
+      const label = `SPOT: ${spot.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      ctx.font = 'bold 9px "Plus Jakarta Sans", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      const textWidth = ctx.measureText(label).width;
+      const boxWidth = textWidth + 10;
+      const boxHeight = 16;
+      const boxX = xPixel - boxWidth / 2;
+      const boxY = top - 18;
+
+      ctx.fillStyle = 'rgba(234, 88, 12, 0.95)';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(boxX, boxY, boxWidth, boxHeight, 3);
+      } else {
+        ctx.rect(boxX, boxY, boxWidth, boxHeight);
+      }
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(label, xPixel, boxY + boxHeight / 2);
+
+      const atmLabel = 'ATM';
+      const atmTextWidth = ctx.measureText(atmLabel).width;
+      const atmBoxWidth = atmTextWidth + 10;
+      const atmBoxHeight = 14;
+      const atmBoxX = xPixel - atmBoxWidth / 2;
+      const atmBoxY = top - 35;
+
+      ctx.fillStyle = 'rgba(37, 99, 235, 0.95)';
+      ctx.beginPath();
+      if (ctx.roundRect) {
+        ctx.roundRect(atmBoxX, atmBoxY, atmBoxWidth, atmBoxHeight, 3);
+      } else {
+        ctx.rect(atmBoxX, atmBoxY, atmBoxWidth, atmBoxHeight);
+      }
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(atmLabel, xPixel, atmBoxY + atmBoxHeight / 2);
+
+      ctx.restore();
+    }
+  };
 
   // Render Full Option Chain Table
   function renderOptionChainTable(items, spotPrice, atmStrike) {
