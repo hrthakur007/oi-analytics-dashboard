@@ -843,11 +843,6 @@ function setTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   localStorage.setItem('app_theme', theme);
 
-  const themeIcon = document.getElementById('theme-toggle-icon');
-  const themeText = document.getElementById('theme-toggle-text');
-  if (themeIcon) themeIcon.textContent = theme === 'light' ? '☀️' : '🌙';
-  if (themeText) themeText.textContent = theme === 'light' ? 'Light' : 'Dark';
-
   if (typeof updateChartsTheme === 'function') {
     updateChartsTheme();
   }
