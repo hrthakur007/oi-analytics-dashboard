@@ -40,9 +40,54 @@ document.addEventListener('DOMContentLoaded', () => {
   init();
 
   async function init() {
+    initTheme();
     loadSavedColors();
     setupEventListeners();
     await fetchSymbolExpiryList();
+  }
+
+  function initTheme() {
+    const currentTheme = localStorage.getItem('app_theme') || 'dark';
+    setTheme(currentTheme);
+
+    const btnThemeToggle = document.getElementById('btn-theme-toggle');
+    if (btnThemeToggle) {
+      btnThemeToggle.addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        setTheme(isDark ? 'light' : 'dark');
+      });
+    }
+  }
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('app_theme', theme);
+
+    const themeIcon = document.getElementById('theme-toggle-icon');
+    const themeText = document.getElementById('theme-toggle-text');
+    if (themeIcon) themeIcon.textContent = theme === 'light' ? '☀️' : '🌙';
+    if (themeText) themeText.textContent = theme === 'light' ? 'Light' : 'Dark';
+
+    updateChartsTheme();
+  }
+
+  function updateChartsTheme() {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
+    const tickColor = isLight ? '#475569' : '#94a3b8';
+
+    [oiChartInstance, volumeChartInstance].forEach(chart => {
+      if (!chart) return;
+      if (chart.options.scales.x) {
+        if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
+        if (chart.options.scales.x.ticks) chart.options.scales.x.ticks.color = tickColor;
+      }
+      if (chart.options.scales.y) {
+        if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = gridColor;
+        if (chart.options.scales.y.ticks) chart.options.scales.y.ticks.color = tickColor;
+      }
+      chart.update();
+    });
   }
 
   function loadSavedColors() {
@@ -444,6 +489,10 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function getChartOptions(strikes, atmStrike) {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
+    const tickColor = isLight ? '#475569' : '#94a3b8';
+
     return {
       responsive: true,
       maintainAspectRatio: false,
@@ -454,9 +503,9 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       scales: {
         x: {
-          grid: { color: 'rgba(255,255,255,0.05)' },
+          grid: { color: gridColor },
           ticks: {
-            color: '#94a3b8',
+            color: tickColor,
             font: { family: "'JetBrains Mono', monospace", size: 10 },
             callback: function(val, idx) {
               const s = strikes[idx];
@@ -466,9 +515,9 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         y: {
           grace: '20%',
-          grid: { color: 'rgba(255,255,255,0.05)' },
+          grid: { color: gridColor },
           ticks: {
-            color: '#94a3b8',
+            color: tickColor,
             font: { family: "'JetBrains Mono', monospace", size: 10 },
             callback: function(val) { return formatUsd(val); }
           }
@@ -500,8 +549,13 @@ document.addEventListener('DOMContentLoaded', () => {
           ctx.textBaseline = isPositive ? 'bottom' : 'top';
           const yPos = isPositive ? bar.y - padding : bar.y + padding;
 
-          // Dataset 0 = Call OI, Dataset 1 = Put OI
-          ctx.fillStyle = datasetIndex === 0 ? deltaChartColors.calls : deltaChartColors.puts;
+          let fillClr = datasetIndex === 0 ? deltaChartColors.calls : deltaChartColors.puts;
+          const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+          if (isLight) {
+            if (fillClr === '#ef4444') fillClr = '#dc2626';
+            if (fillClr === '#10b981') fillClr = '#059669';
+          }
+          ctx.fillStyle = fillClr;
           ctx.fillText(label, bar.x, yPos);
         });
       });

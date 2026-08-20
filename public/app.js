@@ -773,6 +773,7 @@ function updateSliderTrackFill() { renderSliderUI(); }
 
 // Page Initialization
 window.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   SLIDER_MIN_VAL       = getLiveStartMinutes();
   SLIDER_MAX_VAL       = getLiveCloseMinutes();
   selectedStartMinutes = SLIDER_MIN_VAL;
@@ -824,6 +825,58 @@ window.addEventListener('DOMContentLoaded', () => {
 
   fetchDashboardData();
 });
+
+function initTheme() {
+  const currentTheme = localStorage.getItem('app_theme') || 'dark';
+  setTheme(currentTheme);
+
+  const btnThemeToggle = document.getElementById('btn-theme-toggle');
+  if (btnThemeToggle) {
+    btnThemeToggle.addEventListener('click', () => {
+      const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+      setTheme(isDark ? 'light' : 'dark');
+    });
+  }
+}
+
+function setTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  localStorage.setItem('app_theme', theme);
+
+  const themeIcon = document.getElementById('theme-toggle-icon');
+  const themeText = document.getElementById('theme-toggle-text');
+  if (themeIcon) themeIcon.textContent = theme === 'light' ? '☀️' : '🌙';
+  if (themeText) themeText.textContent = theme === 'light' ? 'Light' : 'Dark';
+
+  if (typeof updateChartsTheme === 'function') {
+    updateChartsTheme();
+  }
+}
+
+function updateChartsTheme() {
+  const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+  const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
+  const tickColor = isLight ? '#475569' : '#94a3b8';
+
+  const charts = [
+    typeof oiVerticalChartInstance !== 'undefined' ? oiVerticalChartInstance : null,
+    typeof volumeChartInstance !== 'undefined' ? volumeChartInstance : null,
+    typeof liveChartInstance !== 'undefined' ? liveChartInstance : null
+  ];
+
+  charts.forEach(chart => {
+    if (!chart) return;
+    if (chart.options.scales.x) {
+      if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
+      if (chart.options.scales.x.ticks) chart.options.scales.x.ticks.color = tickColor;
+    }
+    if (chart.options.scales.y) {
+      if (chart.options.scales.y.grid) chart.options.scales.y.grid.color = gridColor;
+      if (chart.options.scales.y.ticks) chart.options.scales.y.ticks.color = tickColor;
+    }
+    chart.update();
+  });
+}
 
 
 // ----------------------------------------------------
@@ -1113,7 +1166,10 @@ const datalabelsPlugin = {
         ctx.textBaseline = isPositive ? 'bottom' : 'top';
         const yPos = isPositive ? bar.y - padding : bar.y + padding;
         
-        ctx.fillStyle = datasetIndex === 0 ? '#ff8080' : '#80ffc2';
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        ctx.fillStyle = isLight
+          ? (datasetIndex === 0 ? '#dc2626' : '#059669')
+          : (datasetIndex === 0 ? '#ff8080' : '#80ffc2');
         ctx.fillText(label, bar.x, yPos);
       });
     });

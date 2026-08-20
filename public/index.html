@@ -46,14 +46,20 @@
       </div>
 
       <!-- Global Navigation -->
-      <nav class="app-nav">
-        <a href="/" class="nav-link active">
-          <span>🇮🇳 Indian Markets</span>
-        </a>
-        <a href="/deltaexchange" class="nav-link">
-          <span>⚡ Delta Exchange</span>
-        </a>
-      </nav>
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <nav class="app-nav">
+          <a href="/" class="nav-link active">
+            <span>🇮🇳 Indian Markets</span>
+          </a>
+          <a href="/deltaexchange" class="nav-link">
+            <span>⚡ Delta Exchange</span>
+          </a>
+        </nav>
+        <button id="btn-theme-toggle" class="theme-toggle-btn" title="Toggle Light/Dark Theme" style="display: flex; align-items: center; gap: 6px; padding: 6px 14px; font-size: 0.82rem; font-weight: 700; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-panel); color: var(--text-primary); cursor: pointer; transition: all 0.2s;">
+          <span id="theme-toggle-icon">🌙</span>
+          <span id="theme-toggle-text">Dark</span>
+        </button>
+      </div>
 
       <div class="header-controls">
         <div class="index-selector">
