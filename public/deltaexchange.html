@@ -146,7 +146,7 @@
       </div>
     </div>
 
-    <!-- Charts Section: Open Interest Bar Chart (Full Width) -->
+    <!-- Charts Section: Open Interest & Volume Bar Charts (Full Width) -->
     <main class="dashboard-grid" style="grid-template-columns: 1fr;">
       
       <!-- Open Interest Bar Chart -->
@@ -163,6 +163,23 @@
         </div>
         <div class="vertical-chart-container" style="height: 380px;">
           <canvas id="deltaOiChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Volume Bar Chart -->
+      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-top: 24px;">
+        <div class="section-title">
+          <div class="title-details">
+            <h3>Volume Bar Chart</h3>
+            <span class="subtitle">Calls vs Puts Traded Volume by Strike</span>
+          </div>
+          <div class="chart-legend-container">
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-vol-call-dot" style="background: #ef4444;"></span>Call Volume</div>
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-vol-put-dot" style="background: #10b981;"></span>Put Volume</div>
+          </div>
+        </div>
+        <div class="vertical-chart-container" style="height: 380px;">
+          <canvas id="deltaVolumeChart"></canvas>
         </div>
       </section>
 

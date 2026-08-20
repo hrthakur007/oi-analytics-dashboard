@@ -6,6 +6,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedStrikeCount = '20';
   let rawOptionChainItems = [];
   let oiChartInstance = null;
+  let volumeChartInstance = null;
 
   const DEFAULT_DELTA_COLORS = {
     calls: '#ef4444', // Red for Call OI
@@ -32,6 +33,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnResetColors      = document.getElementById('btn-reset-delta-colors');
   const legendCallDot       = document.getElementById('delta-legend-call-dot');
   const legendPutDot        = document.getElementById('delta-legend-put-dot');
+  const legendVolCallDot    = document.getElementById('delta-legend-vol-call-dot');
+  const legendVolPutDot     = document.getElementById('delta-legend-vol-put-dot');
 
   // Initialize
   init();
@@ -65,6 +68,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (legendCallDot) legendCallDot.style.background = deltaChartColors.calls;
     if (legendPutDot)  legendPutDot.style.background  = deltaChartColors.puts;
+    if (legendVolCallDot) legendVolCallDot.style.background = deltaChartColors.calls;
+    if (legendVolPutDot)  legendVolPutDot.style.background  = deltaChartColors.puts;
 
     if (oiChartInstance) {
       oiChartInstance.data.datasets[0].backgroundColor = deltaChartColors.calls;
@@ -72,6 +77,14 @@ document.addEventListener('DOMContentLoaded', () => {
       oiChartInstance.data.datasets[1].backgroundColor = deltaChartColors.puts;
       oiChartInstance.data.datasets[1].borderColor = deltaChartColors.puts;
       oiChartInstance.update();
+    }
+
+    if (volumeChartInstance) {
+      volumeChartInstance.data.datasets[0].backgroundColor = deltaChartColors.calls;
+      volumeChartInstance.data.datasets[0].borderColor = deltaChartColors.calls;
+      volumeChartInstance.data.datasets[1].backgroundColor = deltaChartColors.puts;
+      volumeChartInstance.data.datasets[1].borderColor = deltaChartColors.puts;
+      volumeChartInstance.update();
     }
 
     saveColors();
@@ -340,16 +353,20 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(diffMs / (1000 * 60 * 60 * 24), 0.1);
   }
 
-  // Render Open Interest Bar Chart
+  // Render Open Interest & Volume Bar Charts
   function renderCharts(items, spotPrice, atmStrike) {
     const strikes = items.map(i => i.strike_price);
     const callOi  = items.map(i => i.calls_oi_value_usd || 0);
     const putOi   = items.map(i => i.puts_oi_value_usd || 0);
 
+    const callVol = items.map(i => i.calls_turnover_usd || 0);
+    const putVol  = items.map(i => i.puts_turnover_usd || 0);
+
     // Save globals for spot line plugin
     window.currentDeltaSpotPrice = spotPrice;
     window.currentDeltaStrikes = strikes;
 
+    // 1. Open Interest (OI) Bar Chart
     const ctxOi = document.getElementById('deltaOiChart').getContext('2d');
     if (oiChartInstance) {
       oiChartInstance.data.labels = strikes;
@@ -376,6 +393,44 @@ document.addEventListener('DOMContentLoaded', () => {
             { 
               label: 'Put OI', 
               data: putOi, 
+              backgroundColor: deltaChartColors.puts, 
+              borderColor: deltaChartColors.puts, 
+              borderRadius: 4 
+            }
+          ]
+        },
+        options: getChartOptions(strikes, atmStrike),
+        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
+      });
+    }
+
+    // 2. Volume Bar Chart
+    const ctxVol = document.getElementById('deltaVolumeChart').getContext('2d');
+    if (volumeChartInstance) {
+      volumeChartInstance.data.labels = strikes;
+      volumeChartInstance.data.datasets[0].data = callVol;
+      volumeChartInstance.data.datasets[1].data = putVol;
+      volumeChartInstance.options.scales.x.ticks.callback = function(val, idx) {
+        const s = strikes[idx];
+        return s === atmStrike ? `${s} (ATM)` : s;
+      };
+      volumeChartInstance.update();
+    } else {
+      volumeChartInstance = new Chart(ctxVol, {
+        type: 'bar',
+        data: {
+          labels: strikes,
+          datasets: [
+            { 
+              label: 'Call Volume', 
+              data: callVol, 
+              backgroundColor: deltaChartColors.calls, 
+              borderColor: deltaChartColors.calls, 
+              borderRadius: 4 
+            },
+            { 
+              label: 'Put Volume', 
+              data: putVol, 
               backgroundColor: deltaChartColors.puts, 
               borderColor: deltaChartColors.puts, 
               borderRadius: 4 
