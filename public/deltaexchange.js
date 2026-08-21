@@ -538,7 +538,8 @@ document.addEventListener('DOMContentLoaded', () => {
               backgroundColor: deltaChartColors.calls, 
               borderColor: deltaChartColors.calls, 
               borderRadius: 4,
-              barPercentage: 0.7
+              categoryPercentage: 0.85,
+              barPercentage: 0.85
             },
             { 
               label: 'Put OI Contracts (Right)', 
@@ -546,7 +547,8 @@ document.addEventListener('DOMContentLoaded', () => {
               backgroundColor: deltaChartColors.puts, 
               borderColor: deltaChartColors.puts, 
               borderRadius: 4,
-              barPercentage: 0.7
+              categoryPercentage: 0.85,
+              barPercentage: 0.85
             }
           ]
         },
@@ -620,7 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
       indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { left: 50, right: 50, top: 15, bottom: 15 } },
+      layout: { padding: { left: 55, right: 55, top: 15, bottom: 15 } },
       ratioData: { strikes, atmStrike, data1, data2 },
       plugins: {
         legend: { display: false },
@@ -661,10 +663,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.textBaseline = 'top';
 
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-      // Distinct Amber Gold color for ratio number to be easily identifiable
       ctx.fillStyle = isLight ? '#d97706' : '#f59e0b';
 
-      const ratioY = x.bottom + 26; // 10px gap below strike price label
+      const ratioY = x.bottom + 26;
 
       strikes.forEach((s, idx) => {
         const xPixel = x.getPixelForTick(idx);
@@ -719,7 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Center Column Ticks Plugin for Butterfly Horizontal Chart (Strike + Ratio)
   const deltaButterflyCenterTicksPlugin = {
     id: 'deltaButterflyCenterTicks',
-    afterDraw(chart) {
+    afterDatasetsDraw(chart) {
       if (!chart.config.options || !chart.config.options.ratioData) return;
       const { strikes, atmStrike, data1, data2 } = chart.config.options.ratioData;
       if (!strikes || !data1 || !data2) return;
@@ -733,7 +734,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.save();
       const isLight = document.documentElement.getAttribute('data-theme') === 'light';
 
-      // 1. Vertical center dividing line
+      // Vertical center dividing line
       ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 1;
       ctx.setLineDash([4, 4]);
@@ -743,9 +744,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ctx.stroke();
       ctx.setLineDash([]);
 
-      const badgeWidth = 115;
-      const badgeHeight = 22;
-      const radius = 4;
+      const badgeWidth = 150;  // 150px wide center column gap
+      const badgeHeight = 28; // Taller badge for double height bars
+      const radius = 6;
 
       strikes.forEach((s, idx) => {
         const yPixel = y.getPixelForTick(idx);
@@ -758,6 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const bX = centerX - badgeWidth / 2;
         const bY = yPixel - badgeHeight / 2;
 
+        // Opaque Center Box to create clean gap between Left and Right bars
         ctx.beginPath();
         if (ctx.roundRect) {
           ctx.roundRect(bX, bY, badgeWidth, badgeHeight, radius);
@@ -766,33 +768,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (isAtm) {
-          ctx.fillStyle = isLight ? 'rgba(249, 115, 22, 0.25)' : 'rgba(249, 115, 22, 0.35)';
+          ctx.fillStyle = isLight ? '#ffedd5' : '#1e1b4b'; // Opaque background
           ctx.strokeStyle = '#f97316';
-          ctx.lineWidth = 1.5;
+          ctx.lineWidth = 2;
           ctx.fill();
           ctx.stroke();
         } else {
-          ctx.fillStyle = isLight ? 'rgba(241, 245, 249, 0.95)' : 'rgba(15, 23, 42, 0.85)';
-          ctx.strokeStyle = isLight ? 'rgba(203, 213, 225, 0.8)' : 'rgba(51, 65, 85, 0.8)';
-          ctx.lineWidth = 1;
+          ctx.fillStyle = isLight ? '#ffffff' : '#0f172a'; // Opaque dark/light box
+          ctx.strokeStyle = isLight ? '#cbd5e1' : '#334155';
+          ctx.lineWidth = 1.5;
           ctx.fill();
           ctx.stroke();
         }
 
-        // Draw Strike Price (Left side of badge)
-        ctx.font = 'bold 11px "JetBrains Mono", monospace';
+        // Draw Strike Price (Left side of center box)
+        ctx.font = 'bold 12px "JetBrains Mono", monospace';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = isAtm ? (isLight ? '#c2410c' : '#fb923c') : (isLight ? '#0f172a' : '#f8fafc');
         const strikeText = isAtm ? `${s} ATM` : `${s}`;
-        ctx.fillText(strikeText, bX + 8, yPixel);
+        ctx.fillText(strikeText, bX + 10, yPixel);
 
-        // Draw Ratio Number (Right side of badge in 14px Bold Amber Gold)
-        ctx.font = 'bold 14px "JetBrains Mono", monospace';
+        // Draw Ratio Number (Right side of center box in 15px Bold Amber Gold)
+        ctx.font = 'bold 15px "JetBrains Mono", monospace';
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = isLight ? '#d97706' : '#f59e0b';
-        ctx.fillText(ratioStr, bX + badgeWidth - 8, yPixel);
+        ctx.fillText(ratioStr, bX + badgeWidth - 10, yPixel);
       });
 
       ctx.restore();
