@@ -518,6 +518,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 3. Butterfly Total Open Interest (Contracts) Bar Chart (Unified Single Canvas 100% Mathematically Aligned)
+    const callsMarkPrice = items.map(i => i.calls_mark_price || 0);
+    const putsMarkPrice  = items.map(i => i.puts_mark_price || 0);
+
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
@@ -532,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ctxButterfly = butterflyCanvas.getContext('2d');
     if (butterflyOiChartInstance) {
       butterflyOiChartInstance.data.labels = strikes;
-      butterflyOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi };
+      butterflyOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi, callsMarkPrice, putsMarkPrice };
       butterflyOiChartInstance.update();
     } else {
       butterflyOiChartInstance = new Chart(ctxButterfly, {
@@ -549,7 +552,7 @@ document.addEventListener('DOMContentLoaded', () => {
           responsive: true,
           maintainAspectRatio: false,
           layout: { padding: { left: 10, right: 10, top: 15, bottom: 25 } },
-          ratioData: { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi },
+          ratioData: { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi, callsMarkPrice, putsMarkPrice },
           plugins: {
             legend: { display: false },
             tooltip: { enabled: false }
@@ -572,6 +575,15 @@ document.addEventListener('DOMContentLoaded', () => {
         plugins: [deltaButterflyUnifiedPlugin]
       });
     }
+  }
+
+  function formatMarkPrice(val) {
+    const v = Number(val) || 0;
+    if (v === 0) return '$0';
+    if (v >= 1000) {
+      return '$' + v.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    }
+    return '$' + v.toFixed(2);
   }
 
   function calculateRatio(val1, val2) {
@@ -701,7 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
     id: 'deltaButterflyUnified',
     afterDraw(chart) {
       if (!chart.config.options || !chart.config.options.ratioData) return;
-      const { strikes, atmStrike, data1, data2 } = chart.config.options.ratioData;
+      const { strikes, atmStrike, data1, data2, callsMarkPrice, putsMarkPrice } = chart.config.options.ratioData;
       if (!strikes || !data1 || !data2 || strikes.length === 0) return;
 
       const { ctx, chartArea: { top, bottom, left, right }, scales: { y } } = chart;
@@ -716,7 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const leftMargin = centerX - gapWidth / 2;
       const rightMargin = centerX + gapWidth / 2;
 
-      const outerPadding = 55; // Space for outer datalabels
+      const outerPadding = 115; // Space for OI number + 20px gap + Mark Price
       const leftAvailableWidth = leftMargin - (left + outerPadding);
       const rightAvailableWidth = (right - outerPadding) - rightMargin;
 
@@ -747,7 +759,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeHeight = Math.min(barHeight + 2, 30);
       const badgeWidth = gapWidth - 10; // 160px
 
-      // 2. Render each Strike Price row (Bars + Datalabels + Center Badge)
+      const markClr = isLight ? '#0284c7' : '#38bdf8'; // Distinct Cyan / Sky Blue for Mark Price
+
+      // 2. Render each Strike Price row (Bars + Datalabels + Mark Price + Center Badge)
       strikes.forEach((s, idx) => {
         const yPixel = y.getPixelForTick(idx);
         if (yPixel === undefined || yPixel === null) return;
@@ -776,12 +790,25 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           ctx.fill();
 
-          // Left Call Datalabel
+          // Left Call OI Datalabel
           ctx.font = 'bold 11px "JetBrains Mono", monospace';
           ctx.textAlign = 'right';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = callClr;
-          ctx.fillText(formatNumberCompact(callVal), barX - 6, yPixel);
+          const callOiText = formatNumberCompact(callVal);
+          const callOiX = barX - 6;
+          ctx.fillText(callOiText, callOiX, yPixel);
+
+          // Left Call Mark Price (20px gap to the left of OI text in Cyan / Sky Blue)
+          if (callsMarkPrice && callsMarkPrice[idx] !== undefined) {
+            const callOiWidth = ctx.measureText(callOiText).width;
+            const callMarkX = callOiX - callOiWidth - 20; // 20px gap!
+            const callMarkText = formatMarkPrice(callsMarkPrice[idx]);
+
+            ctx.fillStyle = markClr;
+            ctx.font = 'bold 11px "JetBrains Mono", monospace';
+            ctx.fillText(callMarkText, callMarkX, yPixel);
+          }
         }
 
         // B. Draw Right Put Bar (Starts at rightMargin, grows RIGHTWARDS)
@@ -802,12 +829,25 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           ctx.fill();
 
-          // Right Put Datalabel
+          // Right Put OI Datalabel
           ctx.font = 'bold 11px "JetBrains Mono", monospace';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'middle';
           ctx.fillStyle = putClr;
-          ctx.fillText(formatNumberCompact(putVal), barX + putWidth + 6, yPixel);
+          const putOiText = formatNumberCompact(putVal);
+          const putOiX = barX + putWidth + 6;
+          ctx.fillText(putOiText, putOiX, yPixel);
+
+          // Right Put Mark Price (20px gap to the right of OI text in Cyan / Sky Blue)
+          if (putsMarkPrice && putsMarkPrice[idx] !== undefined) {
+            const putOiWidth = ctx.measureText(putOiText).width;
+            const putMarkX = putOiX + putOiWidth + 20; // 20px gap!
+            const putMarkText = formatMarkPrice(putsMarkPrice[idx]);
+
+            ctx.fillStyle = markClr;
+            ctx.font = 'bold 11px "JetBrains Mono", monospace';
+            ctx.fillText(putMarkText, putMarkX, yPixel);
+          }
         }
 
         // C. Draw Center Column Badge (Centered at exact same yPixel!)
