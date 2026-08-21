@@ -833,7 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const leftMargin = centerX - gapWidth / 2;
       const rightMargin = centerX + gapWidth / 2;
 
-      const outerPadding = 115; // Space for OI number + 20px gap + Mark Price
+      const outerPadding = 175; // Space for OI number + 20px gap + Mark Price + 15px gap + ATM Distance
       const leftAvailableWidth = leftMargin - (left + outerPadding);
       const rightAvailableWidth = (right - outerPadding) - rightMargin;
 
@@ -865,8 +865,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeWidth = gapWidth - 10; // 160px
 
       const markClr = isLight ? '#0284c7' : '#38bdf8'; // Distinct Cyan / Sky Blue for Mark Price
+      const distClr = isLight ? '#7e22ce' : '#c084fc'; // Distinct Violet / Purple for ATM Distance
 
-      // 2. Render each Strike Price row (Bars + Datalabels + Mark Price + Center Badge)
+      // 2. Render each Strike Price row (Bars + Datalabels + Mark Price + ATM Dist + Center Badge)
       strikes.forEach((s, idx) => {
         const yPixel = y.getPixelForTick(idx);
         if (yPixel === undefined || yPixel === null) return;
@@ -876,6 +877,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const callVal = data1[idx] || 0;
         const putVal  = data2[idx] || 0;
         const ratioStr = calculateRatio(callVal, putVal);
+
+        const distVal = Math.abs(s - atmStrike);
+        const distText = distVal === 0 ? '0' : distVal.toLocaleString();
 
         // A. Draw Left Call Bar (Starts at leftMargin, grows LEFTWARDS)
         if (callVal > 0) {
@@ -904,7 +908,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const callOiX = barX - 6;
           ctx.fillText(callOiText, callOiX, yPixel);
 
-          // Left Call Mark Price (20px gap to the left of OI text in Cyan / Sky Blue)
+          // Left Call Mark Price (20px gap left of OI text)
           if (callsMarkPrice && callsMarkPrice[idx] !== undefined) {
             const callOiWidth = ctx.measureText(callOiText).width;
             const callMarkX = callOiX - callOiWidth - 20; // 20px gap!
@@ -913,6 +917,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillStyle = markClr;
             ctx.font = 'bold 11px "JetBrains Mono", monospace';
             ctx.fillText(callMarkText, callMarkX, yPixel);
+
+            // Left Call ATM Distance (15px gap left of Mark Price)
+            const callMarkWidth = ctx.measureText(callMarkText).width;
+            const distX = callMarkX - callMarkWidth - 15; // 15px gap!
+
+            ctx.fillStyle = distClr;
+            ctx.font = 'bold 11px "JetBrains Mono", monospace';
+            ctx.fillText(distText, distX, yPixel);
           }
         }
 
@@ -943,7 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const putOiX = barX + putWidth + 6;
           ctx.fillText(putOiText, putOiX, yPixel);
 
-          // Right Put Mark Price (20px gap to the right of OI text in Cyan / Sky Blue)
+          // Right Put Mark Price (20px gap right of OI text)
           if (putsMarkPrice && putsMarkPrice[idx] !== undefined) {
             const putOiWidth = ctx.measureText(putOiText).width;
             const putMarkX = putOiX + putOiWidth + 20; // 20px gap!
@@ -952,6 +964,14 @@ document.addEventListener('DOMContentLoaded', () => {
             ctx.fillStyle = markClr;
             ctx.font = 'bold 11px "JetBrains Mono", monospace';
             ctx.fillText(putMarkText, putMarkX, yPixel);
+
+            // Right Put ATM Distance (15px gap right of Mark Price)
+            const putMarkWidth = ctx.measureText(putMarkText).width;
+            const distX = putMarkX + putMarkWidth + 15; // 15px gap!
+
+            ctx.fillStyle = distClr;
+            ctx.font = 'bold 11px "JetBrains Mono", monospace';
+            ctx.fillText(distText, distX, yPixel);
           }
         }
 
