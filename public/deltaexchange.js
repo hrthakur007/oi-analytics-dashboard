@@ -488,16 +488,16 @@ document.addEventListener('DOMContentLoaded', () => {
   function calculateRatio(val1, val2) {
     const v1 = Math.abs(val1 || 0);
     const v2 = Math.abs(val2 || 0);
-    if (v1 === 0 && v2 === 0) return '1:1';
+    if (v1 === 0 && v2 === 0) return '1';
     if (v1 === 0 || v2 === 0) {
       const nonZero = Math.max(v1, v2);
-      return nonZero > 0 ? '>99:1' : '1:1';
+      return nonZero > 0 ? '>99' : '1';
     }
     const bigger = Math.max(v1, v2);
     const smaller = Math.min(v1, v2);
     const ratio = bigger / smaller;
     const ratioStr = (ratio % 1 === 0) ? ratio.toFixed(0) : ratio.toFixed(1);
-    return `${ratioStr}:1`;
+    return `${ratioStr}`;
   }
 
   function getChartOptions(strikes, atmStrike, data1, data2) {
