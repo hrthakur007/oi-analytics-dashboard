@@ -865,7 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const badgeWidth = gapWidth - 10; // 160px
 
       const markClr = isLight ? '#0284c7' : '#38bdf8'; // Distinct Cyan / Sky Blue for Mark Price
-      const distClr = isLight ? '#7e22ce' : '#c084fc'; // Distinct Violet / Purple for ATM Distance
+      const distClr = isLight ? '#d97706' : '#f59e0b'; // Yellow Orange / Amber Gold for ATM Distance
 
       // 2. Render each Strike Price row (Bars + Datalabels + Mark Price + ATM Dist + Center Badge)
       strikes.forEach((s, idx) => {
