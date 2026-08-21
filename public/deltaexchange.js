@@ -414,7 +414,8 @@ document.addEventListener('DOMContentLoaded', () => {
       oiChartInstance.data.datasets[1].data = putOi;
       oiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
         const s = strikes[idx];
-        return s === atmStrike ? `${s} (ATM)` : s;
+        const str = s === atmStrike ? `${s} (ATM)` : `${s}`;
+        return [str, calculateRatio(callOi[idx], putOi[idx])];
       };
       oiChartInstance.update();
     } else {
@@ -439,7 +440,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           ]
         },
-        options: getChartOptions(strikes, atmStrike),
+        options: getChartOptions(strikes, atmStrike, callOi, putOi),
         plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
       });
     }
@@ -452,7 +453,8 @@ document.addEventListener('DOMContentLoaded', () => {
       volumeChartInstance.data.datasets[1].data = putVol;
       volumeChartInstance.options.scales.x.ticks.callback = function(val, idx) {
         const s = strikes[idx];
-        return s === atmStrike ? `${s} (ATM)` : s;
+        const str = s === atmStrike ? `${s} (ATM)` : `${s}`;
+        return [str, calculateRatio(callVol[idx], putVol[idx])];
       };
       volumeChartInstance.update();
     } else {
@@ -477,13 +479,28 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           ]
         },
-        options: getChartOptions(strikes, atmStrike),
+        options: getChartOptions(strikes, atmStrike, callVol, putVol),
         plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
       });
     }
   }
 
-  function getChartOptions(strikes, atmStrike) {
+  function calculateRatio(val1, val2) {
+    const v1 = Math.abs(val1 || 0);
+    const v2 = Math.abs(val2 || 0);
+    if (v1 === 0 && v2 === 0) return '1:1';
+    if (v1 === 0 || v2 === 0) {
+      const nonZero = Math.max(v1, v2);
+      return nonZero > 0 ? '>99:1' : '1:1';
+    }
+    const bigger = Math.max(v1, v2);
+    const smaller = Math.min(v1, v2);
+    const ratio = bigger / smaller;
+    const ratioStr = (ratio % 1 === 0) ? ratio.toFixed(0) : ratio.toFixed(1);
+    return `${ratioStr}:1`;
+  }
+
+  function getChartOptions(strikes, atmStrike, data1, data2) {
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
@@ -504,7 +521,11 @@ document.addEventListener('DOMContentLoaded', () => {
             font: { family: "'JetBrains Mono', monospace", size: 11 },
             callback: function(val, idx) {
               const s = strikes[idx];
-              return s === atmStrike ? `${s} (ATM)` : s;
+              const str = s === atmStrike ? `${s} (ATM)` : `${s}`;
+              if (data1 && data2 && data1[idx] !== undefined) {
+                return [str, calculateRatio(data1[idx], data2[idx])];
+              }
+              return str;
             }
           }
         },
