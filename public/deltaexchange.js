@@ -576,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!x) return;
 
       ctx.save();
-      ctx.font = 'bold 11px "JetBrains Mono", monospace';
+      ctx.font = 'bold 14px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'top';
 
