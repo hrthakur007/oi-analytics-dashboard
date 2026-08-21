@@ -76,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    [totalOiChartInstance, oiChartInstance, volumeChartInstance].forEach(chart => {
+    [totalOiChartInstance, volumeChartInstance].forEach(chart => {
       if (!chart) return;
       if (chart.options.scales.x) {
         if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
@@ -111,8 +111,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (inputClrCalls) inputClrCalls.value = deltaChartColors.calls;
     if (inputClrPuts)  inputClrPuts.value  = deltaChartColors.puts;
 
-    if (legendCallDot) legendCallDot.style.background = deltaChartColors.calls;
-    if (legendPutDot)  legendPutDot.style.background  = deltaChartColors.puts;
     if (legendVolCallDot) legendVolCallDot.style.background = deltaChartColors.calls;
     if (legendVolPutDot)  legendVolPutDot.style.background  = deltaChartColors.puts;
 
@@ -121,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalPutDot = document.getElementById('delta-legend-total-put-dot');
     if (totalPutDot) totalPutDot.style.background = deltaChartColors.puts;
 
-    [totalOiChartInstance, oiChartInstance, volumeChartInstance].forEach(chart => {
+    [totalOiChartInstance, volumeChartInstance].forEach(chart => {
       if (!chart) return;
       chart.data.datasets[0].backgroundColor = deltaChartColors.calls;
       chart.data.datasets[0].borderColor = deltaChartColors.calls;
@@ -416,17 +414,13 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(diffMs / (1000 * 60 * 60 * 24), 0.1);
   }
 
-  // Render Total OI, 6H Change in OI & Volume Bar Charts
+  // Render Total OI Contracts & Volume Bar Charts
   function renderCharts(items, spotPrice, atmStrike) {
     const strikes = items.map(i => i.strike_price);
     
     // Total OI Contracts
     const callTotalOi = items.map(i => i.calls_oi_contracts || 0);
     const putTotalOi  = items.map(i => i.puts_oi_contracts || 0);
-
-    // 6H Change in OI USD
-    const callChgOi  = items.map(i => i.calls_oi_change_usd_6h || 0);
-    const putChgOi   = items.map(i => i.puts_oi_change_usd_6h || 0);
 
     // Volume Turnover USD
     const callVol = items.map(i => i.calls_turnover_usd || 0);
@@ -475,46 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 2. 6-Hour Change in Open Interest (OI) Bar Chart
-    const ctxOi = document.getElementById('deltaOiChart').getContext('2d');
-    if (oiChartInstance) {
-      oiChartInstance.data.labels = strikes;
-      oiChartInstance.data.datasets[0].data = callChgOi;
-      oiChartInstance.data.datasets[1].data = putChgOi;
-      oiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
-        const s = strikes[idx];
-        return s === atmStrike ? `${s} (ATM)` : `${s}`;
-      };
-      oiChartInstance.options.ratioData = { strikes, atmStrike, data1: callChgOi, data2: putChgOi };
-      oiChartInstance.update();
-    } else {
-      oiChartInstance = new Chart(ctxOi, {
-        type: 'bar',
-        data: {
-          labels: strikes,
-          datasets: [
-            { 
-              label: 'Call Chg OI (6h)', 
-              data: callChgOi, 
-              backgroundColor: deltaChartColors.calls, 
-              borderColor: deltaChartColors.calls, 
-              borderRadius: 4 
-            },
-            { 
-              label: 'Put Chg OI (6h)', 
-              data: putChgOi, 
-              backgroundColor: deltaChartColors.puts, 
-              borderColor: deltaChartColors.puts, 
-              borderRadius: 4 
-            }
-          ]
-        },
-        options: getChartOptions(strikes, atmStrike, callChgOi, putChgOi),
-        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
-      });
-    }
-
-    // 3. Volume Bar Chart
+    // 2. Volume Bar Chart
     const ctxVol = document.getElementById('deltaVolumeChart').getContext('2d');
     if (volumeChartInstance) {
       volumeChartInstance.data.labels = strikes;

@@ -156,7 +156,7 @@
       </div>
     </div>
 
-    <!-- Charts Section: Total Open Interest, 6H Change in OI & Volume Bar Charts (Full Width) -->
+    <!-- Charts Section: Total Open Interest Contracts & Volume Bar Charts (Full Width) -->
     <main class="dashboard-grid" style="grid-template-columns: 1fr;">
       
       <!-- 1. Total Open Interest (Contracts) Bar Chart -->
@@ -176,24 +176,7 @@
         </div>
       </section>
 
-      <!-- 2. 6-Hour Change in Open Interest Bar Chart -->
-      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-bottom: 24px;">
-        <div class="section-title">
-          <div class="title-details">
-            <h3>Change in Open Interest (6H) Bar Chart</h3>
-            <span class="subtitle">Calls vs Puts 6-Hour Change in Open Interest by Strike</span>
-          </div>
-          <div class="chart-legend-container">
-            <div class="legend-item"><span class="legend-dot" id="delta-legend-call-dot" style="background: #ef4444;"></span>Call Chg OI (6h)</div>
-            <div class="legend-item"><span class="legend-dot" id="delta-legend-put-dot" style="background: #10b981;"></span>Put Chg OI (6h)</div>
-          </div>
-        </div>
-        <div class="vertical-chart-container" style="height: 380px;">
-          <canvas id="deltaOiChart"></canvas>
-        </div>
-      </section>
-
-      <!-- 3. Volume Bar Chart -->
+      <!-- 2. Volume Bar Chart -->
       <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1;">
         <div class="section-title">
           <div class="title-details">
