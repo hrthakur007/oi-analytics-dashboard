@@ -393,11 +393,11 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(diffMs / (1000 * 60 * 60 * 24), 0.1);
   }
 
-  // Render Open Interest & Volume Bar Charts
+  // Render Open Interest (6H Change) & Volume Bar Charts
   function renderCharts(items, spotPrice, atmStrike) {
     const strikes = items.map(i => i.strike_price);
-    const callOi  = items.map(i => i.calls_oi_value_usd || 0);
-    const putOi   = items.map(i => i.puts_oi_value_usd || 0);
+    const callOi  = items.map(i => i.calls_oi_change_usd_6h || 0);
+    const putOi   = items.map(i => i.puts_oi_change_usd_6h || 0);
 
     const callVol = items.map(i => i.calls_turnover_usd || 0);
     const putVol  = items.map(i => i.puts_turnover_usd || 0);
@@ -406,7 +406,7 @@ document.addEventListener('DOMContentLoaded', () => {
     window.currentDeltaSpotPrice = spotPrice;
     window.currentDeltaStrikes = strikes;
 
-    // 1. Open Interest (OI) Bar Chart
+    // 1. 6-Hour Change in Open Interest (OI) Bar Chart
     const ctxOi = document.getElementById('deltaOiChart').getContext('2d');
     if (oiChartInstance) {
       oiChartInstance.data.labels = strikes;
@@ -425,14 +425,14 @@ document.addEventListener('DOMContentLoaded', () => {
           labels: strikes,
           datasets: [
             { 
-              label: 'Call OI', 
+              label: 'Call Chg OI (6h)', 
               data: callOi, 
               backgroundColor: deltaChartColors.calls, 
               borderColor: deltaChartColors.calls, 
               borderRadius: 4 
             },
             { 
-              label: 'Put OI', 
+              label: 'Put Chg OI (6h)', 
               data: putOi, 
               backgroundColor: deltaChartColors.puts, 
               borderColor: deltaChartColors.puts, 
