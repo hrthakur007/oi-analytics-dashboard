@@ -60,7 +60,7 @@
       <div class="header-controls">
         <div class="refresh-container" style="display: flex; align-items: center; gap: 10px;">
           <span class="live-indicator-dot" style="display: inline-block; width: 8px; height: 8px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981;"></span>
-          <span style="font-size: 0.8rem; color: var(--text-secondary);">Auto-refreshes every 2 min</span>
+          <span style="font-size: 0.8rem; color: var(--text-secondary);">Auto-refreshes in <b id="delta-timer-countdown" style="color: var(--primary-color);">30</b>s</span>
           <button id="btn-manual-refresh" class="range-btn" style="padding: 6px 12px; cursor: pointer;">↻ Refresh</button>
         </div>
       </div>
@@ -78,35 +78,38 @@
               <option value="BTC" selected>BTC</option>
               <option value="ETH">ETH</option>
               <option value="XAUT">XAUT</option>
+              <option value="SOL">SOL</option>
+              <option value="XRP">XRP</option>
             </select>
           </div>
 
           <!-- Expiry Date Selector -->
           <div style="display: flex; align-items: center; gap: 8px;">
             <label for="delta-expiry-select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">Expiry Date:</label>
-            <select id="delta-expiry-select" class="range-select" style="font-weight: 600; font-size: 0.9rem; padding: 6px 14px; min-width: 160px;">
-              <!-- Populated dynamically via JS -->
+            <select id="delta-expiry-select" class="range-select" style="font-weight: 700; font-size: 0.95rem; padding: 6px 14px; min-width: 160px;">
+              <!-- Dynamically Populated -->
             </select>
           </div>
 
-          <!-- Strike Range Selector -->
+          <!-- Strikes Range Selector -->
           <div style="display: flex; align-items: center; gap: 8px;">
             <label for="delta-strike-range-select" style="font-size: 0.85rem; font-weight: 700; color: var(--text-secondary);">Strikes:</label>
-            <select id="delta-strike-range-select" class="range-select" style="font-weight: 600; font-size: 0.9rem; padding: 6px 14px; min-width: 100px;">
+            <select id="delta-strike-range-select" class="range-select" style="font-weight: 700; font-size: 0.9rem; padding: 6px 12px; min-width: 90px;">
               <option value="10">10</option>
               <option value="20" selected>20</option>
               <option value="30">30</option>
               <option value="40">40</option>
               <option value="all">All</option>
             </select>
-            <button id="btn-toggle-delta-colors" title="Customise Chart Colours"
-              style="padding: 6px 12px; font-size: 0.78rem; font-weight: 700; border-radius: 6px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.4); color: #a5b4fc; cursor: pointer; white-space: nowrap; transition: background 0.2s;">
-              🎨 Colors
-            </button>
           </div>
+
+          <!-- Toggle Chart Color Picker -->
+          <button id="btn-toggle-delta-colors" class="range-btn" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 6px 14px; background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); color: var(--primary-color);">
+            🎨 Colors
+          </button>
         </div>
 
-        <!-- Spot Price Header Display -->
+        <!-- Spot Price Display -->
         <div style="display: flex; align-items: center; gap: 10px; background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.25); padding: 8px 16px; border-radius: 8px;">
           <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Spot Price:</span>
           <span id="delta-spot-price" style="font-family: var(--font-mono); font-size: 1.25rem; font-weight: 800; color: #38bdf8;">$---.--</span>
@@ -145,7 +148,7 @@
       </div>
       <div class="delta-metric-item">
         <span class="metric-label">CHG OI PCR</span>
-        <span class="metric-val" id="delta-chg-oi-pcr" style="color: #38bdf8;">-.----</span>
+        <span class="metric-val" id="delta-chg-oi-pcr" style="color: #6366f1;">-.----</span>
       </div>
       <div class="delta-metric-item">
         <span class="metric-label">Expected Range</span>
@@ -153,11 +156,28 @@
       </div>
     </div>
 
-    <!-- Charts Section: Open Interest & Volume Bar Charts (Full Width) -->
+    <!-- Charts Section: Total Open Interest, 6H Change in OI & Volume Bar Charts (Full Width) -->
     <main class="dashboard-grid" style="grid-template-columns: 1fr;">
       
-      <!-- 6-Hour Change in Open Interest Bar Chart -->
-      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1;">
+      <!-- 1. Total Open Interest (Contracts) Bar Chart -->
+      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-bottom: 24px;">
+        <div class="section-title">
+          <div class="title-details">
+            <h3>Total Open Interest (Contracts) Bar Chart</h3>
+            <span class="subtitle">Calls vs Puts Total Open Interest Contracts by Strike</span>
+          </div>
+          <div class="chart-legend-container">
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-total-call-dot" style="background: #ef4444;"></span>Call OI Contracts</div>
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-total-put-dot" style="background: #10b981;"></span>Put OI Contracts</div>
+          </div>
+        </div>
+        <div class="vertical-chart-container" style="height: 380px;">
+          <canvas id="deltaTotalOiChart"></canvas>
+        </div>
+      </section>
+
+      <!-- 2. 6-Hour Change in Open Interest Bar Chart -->
+      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-bottom: 24px;">
         <div class="section-title">
           <div class="title-details">
             <h3>Change in Open Interest (6H) Bar Chart</h3>
@@ -173,8 +193,8 @@
         </div>
       </section>
 
-      <!-- Volume Bar Chart -->
-      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-top: 24px;">
+      <!-- 3. Volume Bar Chart -->
+      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1;">
         <div class="section-title">
           <div class="title-details">
             <h3>Volume Bar Chart</h3>
@@ -189,7 +209,6 @@
           <canvas id="deltaVolumeChart"></canvas>
         </div>
       </section>
-
     </main>
 
     <!-- Full Option Chain Table Section -->

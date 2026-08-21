@@ -5,8 +5,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentExpiry = '';
   let selectedStrikeCount = '20';
   let rawOptionChainItems = [];
+  let totalOiChartInstance = null;
   let oiChartInstance = null;
   let volumeChartInstance = null;
+
+  const REFRESH_INTERVAL_SEC = 30;
+  let countdown = REFRESH_INTERVAL_SEC;
+  let refreshTimer = null;
 
   const DEFAULT_DELTA_COLORS = {
     calls: '#ef4444', // Red for Call OI
@@ -71,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    [oiChartInstance, volumeChartInstance].forEach(chart => {
+    [totalOiChartInstance, oiChartInstance, volumeChartInstance].forEach(chart => {
       if (!chart) return;
       if (chart.options.scales.x) {
         if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
@@ -111,21 +116,19 @@ document.addEventListener('DOMContentLoaded', () => {
     if (legendVolCallDot) legendVolCallDot.style.background = deltaChartColors.calls;
     if (legendVolPutDot)  legendVolPutDot.style.background  = deltaChartColors.puts;
 
-    if (oiChartInstance) {
-      oiChartInstance.data.datasets[0].backgroundColor = deltaChartColors.calls;
-      oiChartInstance.data.datasets[0].borderColor = deltaChartColors.calls;
-      oiChartInstance.data.datasets[1].backgroundColor = deltaChartColors.puts;
-      oiChartInstance.data.datasets[1].borderColor = deltaChartColors.puts;
-      oiChartInstance.update();
-    }
+    const totalCallDot = document.getElementById('delta-legend-total-call-dot');
+    if (totalCallDot) totalCallDot.style.background = deltaChartColors.calls;
+    const totalPutDot = document.getElementById('delta-legend-total-put-dot');
+    if (totalPutDot) totalPutDot.style.background = deltaChartColors.puts;
 
-    if (volumeChartInstance) {
-      volumeChartInstance.data.datasets[0].backgroundColor = deltaChartColors.calls;
-      volumeChartInstance.data.datasets[0].borderColor = deltaChartColors.calls;
-      volumeChartInstance.data.datasets[1].backgroundColor = deltaChartColors.puts;
-      volumeChartInstance.data.datasets[1].borderColor = deltaChartColors.puts;
-      volumeChartInstance.update();
-    }
+    [totalOiChartInstance, oiChartInstance, volumeChartInstance].forEach(chart => {
+      if (!chart) return;
+      chart.data.datasets[0].backgroundColor = deltaChartColors.calls;
+      chart.data.datasets[0].borderColor = deltaChartColors.calls;
+      chart.data.datasets[1].backgroundColor = deltaChartColors.puts;
+      chart.data.datasets[1].borderColor = deltaChartColors.puts;
+      chart.update();
+    });
 
     saveColors();
   }
@@ -184,11 +187,29 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRefresh.addEventListener('click', () => {
       fetchOptionChain();
     });
+  }
 
-    // Auto refresh every 2 minutes (120,000 ms)
-    setInterval(() => {
-      fetchOptionChain();
-    }, 120000);
+  function startAutoRefreshTimer() {
+    clearInterval(refreshTimer);
+    countdown = REFRESH_INTERVAL_SEC;
+    updateTimerUI();
+
+    refreshTimer = setInterval(() => {
+      countdown--;
+      updateTimerUI();
+
+      if (countdown <= 0) {
+        clearInterval(refreshTimer);
+        fetchOptionChain();
+      }
+    }, 1000);
+  }
+
+  function updateTimerUI() {
+    const countdownEl = document.getElementById('delta-timer-countdown');
+    if (countdownEl) {
+      countdownEl.textContent = countdown;
+    }
   }
 
   // Fetch Symbol Expiry List from backend proxy
@@ -279,6 +300,8 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Error fetching option chain:', err);
       btnRefresh.textContent = '↻ Refresh';
       tableBodyEl.innerHTML = `<tr><td colspan="19" style="text-align:center; padding: 30px; color: #f87171;">Failed to load data. Please try again.</td></tr>`;
+    } finally {
+      startAutoRefreshTimer();
     }
   }
 
@@ -393,12 +416,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(diffMs / (1000 * 60 * 60 * 24), 0.1);
   }
 
-  // Render Open Interest (6H Change) & Volume Bar Charts
+  // Render Total OI, 6H Change in OI & Volume Bar Charts
   function renderCharts(items, spotPrice, atmStrike) {
     const strikes = items.map(i => i.strike_price);
-    const callOi  = items.map(i => i.calls_oi_change_usd_6h || 0);
-    const putOi   = items.map(i => i.puts_oi_change_usd_6h || 0);
+    
+    // Total OI Contracts
+    const callTotalOi = items.map(i => i.calls_oi_contracts || 0);
+    const putTotalOi  = items.map(i => i.puts_oi_contracts || 0);
 
+    // 6H Change in OI USD
+    const callChgOi  = items.map(i => i.calls_oi_change_usd_6h || 0);
+    const putChgOi   = items.map(i => i.puts_oi_change_usd_6h || 0);
+
+    // Volume Turnover USD
     const callVol = items.map(i => i.calls_turnover_usd || 0);
     const putVol  = items.map(i => i.puts_turnover_usd || 0);
 
@@ -406,17 +436,56 @@ document.addEventListener('DOMContentLoaded', () => {
     window.currentDeltaSpotPrice = spotPrice;
     window.currentDeltaStrikes = strikes;
 
-    // 1. 6-Hour Change in Open Interest (OI) Bar Chart
+    // 1. Total Open Interest (Contracts) Bar Chart
+    const ctxTotalOi = document.getElementById('deltaTotalOiChart').getContext('2d');
+    if (totalOiChartInstance) {
+      totalOiChartInstance.data.labels = strikes;
+      totalOiChartInstance.data.datasets[0].data = callTotalOi;
+      totalOiChartInstance.data.datasets[1].data = putTotalOi;
+      totalOiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
+        const s = strikes[idx];
+        return s === atmStrike ? `${s} (ATM)` : `${s}`;
+      };
+      totalOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi };
+      totalOiChartInstance.update();
+    } else {
+      totalOiChartInstance = new Chart(ctxTotalOi, {
+        type: 'bar',
+        data: {
+          labels: strikes,
+          datasets: [
+            { 
+              label: 'Call OI Contracts', 
+              data: callTotalOi, 
+              backgroundColor: deltaChartColors.calls, 
+              borderColor: deltaChartColors.calls, 
+              borderRadius: 4 
+            },
+            { 
+              label: 'Put OI Contracts', 
+              data: putTotalOi, 
+              backgroundColor: deltaChartColors.puts, 
+              borderColor: deltaChartColors.puts, 
+              borderRadius: 4 
+            }
+          ]
+        },
+        options: getChartOptions(strikes, atmStrike, callTotalOi, putTotalOi),
+        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
+      });
+    }
+
+    // 2. 6-Hour Change in Open Interest (OI) Bar Chart
     const ctxOi = document.getElementById('deltaOiChart').getContext('2d');
     if (oiChartInstance) {
       oiChartInstance.data.labels = strikes;
-      oiChartInstance.data.datasets[0].data = callOi;
-      oiChartInstance.data.datasets[1].data = putOi;
+      oiChartInstance.data.datasets[0].data = callChgOi;
+      oiChartInstance.data.datasets[1].data = putChgOi;
       oiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
         const s = strikes[idx];
         return s === atmStrike ? `${s} (ATM)` : `${s}`;
       };
-      oiChartInstance.options.ratioData = { strikes, atmStrike, data1: callOi, data2: putOi };
+      oiChartInstance.options.ratioData = { strikes, atmStrike, data1: callChgOi, data2: putChgOi };
       oiChartInstance.update();
     } else {
       oiChartInstance = new Chart(ctxOi, {
@@ -426,26 +495,26 @@ document.addEventListener('DOMContentLoaded', () => {
           datasets: [
             { 
               label: 'Call Chg OI (6h)', 
-              data: callOi, 
+              data: callChgOi, 
               backgroundColor: deltaChartColors.calls, 
               borderColor: deltaChartColors.calls, 
               borderRadius: 4 
             },
             { 
               label: 'Put Chg OI (6h)', 
-              data: putOi, 
+              data: putChgOi, 
               backgroundColor: deltaChartColors.puts, 
               borderColor: deltaChartColors.puts, 
               borderRadius: 4 
             }
           ]
         },
-        options: getChartOptions(strikes, atmStrike, callOi, putOi),
+        options: getChartOptions(strikes, atmStrike, callChgOi, putChgOi),
         plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
       });
     }
 
-    // 2. Volume Bar Chart
+    // 3. Volume Bar Chart
     const ctxVol = document.getElementById('deltaVolumeChart').getContext('2d');
     if (volumeChartInstance) {
       volumeChartInstance.data.labels = strikes;
