@@ -54,10 +54,23 @@ document.addEventListener('DOMContentLoaded', () => {
   async function init() {
     initTheme();
     loadSavedColors();
+    loadSavedStrikeCount();
     loadChartVisibility();
     setupEventListeners();
     applyChartVisibility();
     await fetchSymbolExpiryList();
+  }
+
+  function loadSavedStrikeCount() {
+    try {
+      const saved = localStorage.getItem('delta_strike_count');
+      if (saved) {
+        selectedStrikeCount = saved;
+        if (strikeRangeSelect) {
+          strikeRangeSelect.value = saved;
+        }
+      }
+    } catch (e) {}
   }
 
   function initTheme() {
@@ -219,6 +232,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (strikeRangeSelect) {
       strikeRangeSelect.addEventListener('change', (e) => {
         selectedStrikeCount = e.target.value;
+        try {
+          localStorage.setItem('delta_strike_count', selectedStrikeCount);
+        } catch (e) {}
         filterAndRender();
       });
     }

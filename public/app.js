@@ -576,10 +576,29 @@ document.querySelectorAll('.index-btn').forEach(btn => {
   });
 });
 
+// Load saved strike range from localStorage
+function loadSavedStrikeRange() {
+  try {
+    const saved = localStorage.getItem('indian_strike_range');
+    if (saved) {
+      strikeRange = parseInt(saved, 10);
+      const strikeSelect = document.getElementById('strike-range-select');
+      if (strikeSelect) {
+        strikeSelect.value = saved;
+      }
+    }
+  } catch (e) {}
+}
+
 // Strike Range Selector
 const strikeRangeSelect = document.getElementById('strike-range-select');
+loadSavedStrikeRange();
+
 strikeRangeSelect.addEventListener('change', (e) => {
-  strikeRange = parseInt(e.target.value);
+  strikeRange = parseInt(e.target.value, 10);
+  try {
+    localStorage.setItem('indian_strike_range', e.target.value);
+  } catch (e) {}
   if (window.lastReceivedSpotData && window.lastReceivedOiData) {
     updateDashboard(window.lastReceivedSpotData, window.lastReceivedOiData);
   }
