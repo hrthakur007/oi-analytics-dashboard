@@ -515,16 +515,15 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 3. Butterfly Total Open Interest (Contracts) Bar Chart
+    // 3. Butterfly Total Open Interest (Contracts) Bar Chart (Horizontal Split)
+    const callTotalOiNeg = items.map(i => -(i.calls_oi_contracts || 0)); // Extends LEFT
+    const putTotalOiPos  = items.map(i => +(i.puts_oi_contracts || 0));  // Extends RIGHT
+
     const ctxButterfly = document.getElementById('deltaButterflyOiChart').getContext('2d');
     if (butterflyOiChartInstance) {
       butterflyOiChartInstance.data.labels = strikes;
-      butterflyOiChartInstance.data.datasets[0].data = callTotalOi;
-      butterflyOiChartInstance.data.datasets[1].data = putTotalOiNeg;
-      butterflyOiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
-        const s = strikes[idx];
-        return s === atmStrike ? `${s} (ATM)` : `${s}`;
-      };
+      butterflyOiChartInstance.data.datasets[0].data = callTotalOiNeg;
+      butterflyOiChartInstance.data.datasets[1].data = putTotalOiPos;
       butterflyOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi };
       butterflyOiChartInstance.update();
     } else {
@@ -534,27 +533,25 @@ document.addEventListener('DOMContentLoaded', () => {
           labels: strikes,
           datasets: [
             { 
-              label: 'Call OI Contracts (Up)', 
-              data: callTotalOi, 
+              label: 'Call OI Contracts (Left)', 
+              data: callTotalOiNeg, 
               backgroundColor: deltaChartColors.calls, 
               borderColor: deltaChartColors.calls, 
               borderRadius: 4,
-              grouped: false,
               barPercentage: 0.7
             },
             { 
-              label: 'Put OI Contracts (Down)', 
-              data: putTotalOiNeg, 
+              label: 'Put OI Contracts (Right)', 
+              data: putTotalOiPos, 
               backgroundColor: deltaChartColors.puts, 
               borderColor: deltaChartColors.puts, 
               borderRadius: 4,
-              grouped: false,
               barPercentage: 0.7
             }
           ]
         },
         options: getButterflyChartOptions(strikes, atmStrike, callTotalOi, putTotalOi),
-        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
+        plugins: [deltaButterflyDatalabelsPlugin, deltaSpotLinePlugin, deltaButterflyCenterTicksPlugin]
       });
     }
   }
@@ -620,9 +617,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
     return {
+      indexAxis: 'y',
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 45, bottom: 45 } },
+      layout: { padding: { left: 50, right: 50, top: 15, bottom: 15 } },
       ratioData: { strikes, atmStrike, data1, data2 },
       plugins: {
         legend: { display: false },
@@ -630,25 +628,17 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       scales: {
         x: {
+          grace: '15%',
           grid: { color: gridColor },
           ticks: {
             color: tickColor,
             font: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
-            padding: 4,
-            callback: function(val, idx) {
-              const s = strikes[idx];
-              return s === atmStrike ? `${s} (ATM)` : `${s}`;
-            }
+            callback: function(val) { return formatNumberCompact(Math.abs(val)); }
           }
         },
         y: {
-          grace: '20%',
-          grid: { color: gridColor },
-          ticks: {
-            color: tickColor,
-            font: { family: "'JetBrains Mono', monospace", size: 11 },
-            callback: function(val) { return formatNumberCompact(Math.abs(val)); }
-          }
+          grid: { display: false },
+          ticks: { display: false }
         }
       }
     };
@@ -726,12 +716,139 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // Center Column Ticks Plugin for Butterfly Horizontal Chart (Strike + Ratio)
+  const deltaButterflyCenterTicksPlugin = {
+    id: 'deltaButterflyCenterTicks',
+    afterDraw(chart) {
+      if (!chart.config.options || !chart.config.options.ratioData) return;
+      const { strikes, atmStrike, data1, data2 } = chart.config.options.ratioData;
+      if (!strikes || !data1 || !data2) return;
+
+      const { ctx, chartArea: { top, bottom }, scales: { x, y } } = chart;
+      if (!x || !y) return;
+
+      const centerX = x.getPixelForValue(0);
+      if (centerX === undefined || centerX === null) return;
+
+      ctx.save();
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+      // 1. Vertical center dividing line
+      ctx.strokeStyle = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(centerX, top);
+      ctx.lineTo(centerX, bottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const badgeWidth = 115;
+      const badgeHeight = 22;
+      const radius = 4;
+
+      strikes.forEach((s, idx) => {
+        const yPixel = y.getPixelForTick(idx);
+        if (yPixel === undefined || yPixel === null) return;
+        if (yPixel < top - 10 || yPixel > bottom + 10) return;
+
+        const isAtm = (s === atmStrike);
+        const ratioStr = calculateRatio(data1[idx], data2[idx]);
+
+        const bX = centerX - badgeWidth / 2;
+        const bY = yPixel - badgeHeight / 2;
+
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(bX, bY, badgeWidth, badgeHeight, radius);
+        } else {
+          ctx.rect(bX, bY, badgeWidth, badgeHeight);
+        }
+
+        if (isAtm) {
+          ctx.fillStyle = isLight ? 'rgba(249, 115, 22, 0.25)' : 'rgba(249, 115, 22, 0.35)';
+          ctx.strokeStyle = '#f97316';
+          ctx.lineWidth = 1.5;
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = isLight ? 'rgba(241, 245, 249, 0.95)' : 'rgba(15, 23, 42, 0.85)';
+          ctx.strokeStyle = isLight ? 'rgba(203, 213, 225, 0.8)' : 'rgba(51, 65, 85, 0.8)';
+          ctx.lineWidth = 1;
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Draw Strike Price (Left side of badge)
+        ctx.font = 'bold 11px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = isAtm ? (isLight ? '#c2410c' : '#fb923c') : (isLight ? '#0f172a' : '#f8fafc');
+        const strikeText = isAtm ? `${s} ATM` : `${s}`;
+        ctx.fillText(strikeText, bX + 8, yPixel);
+
+        // Draw Ratio Number (Right side of badge in 14px Bold Amber Gold)
+        ctx.font = 'bold 14px "JetBrains Mono", monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = isLight ? '#d97706' : '#f59e0b';
+        ctx.fillText(ratioStr, bX + badgeWidth - 8, yPixel);
+      });
+
+      ctx.restore();
+    }
+  };
+
+  // Outer Data Labels Plugin for Butterfly Horizontal Chart
+  const deltaButterflyDatalabelsPlugin = {
+    id: 'deltaButterflyDatalabels',
+    afterDatasetsDraw(chart) {
+      const { ctx, scales: { x } } = chart;
+      if (!x) return;
+
+      ctx.save();
+      ctx.font = 'bold 11px "JetBrains Mono", monospace';
+      ctx.textBaseline = 'middle';
+
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        if (meta.hidden) return;
+
+        meta.data.forEach((bar, index) => {
+          const val = dataset.data[index];
+          if (val === undefined || val === null || val === 0) return;
+
+          const label = formatNumberCompact(Math.abs(val));
+          const isLeft = val < 0; // Call bar extends left
+          const padding = 6;
+
+          let fillClr = datasetIndex === 0 ? deltaChartColors.calls : deltaChartColors.puts;
+          const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+          if (isLight) {
+            if (fillClr === '#ef4444') fillClr = '#dc2626';
+            if (fillClr === '#10b981') fillClr = '#059669';
+          }
+          ctx.fillStyle = fillClr;
+
+          if (isLeft) {
+            ctx.textAlign = 'right';
+            ctx.fillText(label, bar.x - padding, bar.y);
+          } else {
+            ctx.textAlign = 'left';
+            ctx.fillText(label, bar.x + padding, bar.y);
+          }
+        });
+      });
+      ctx.restore();
+    }
+  };
+
   // Spot Line & ATM Badges Plugin for Delta Exchange
   const deltaSpotLinePlugin = {
     id: 'deltaSpotLine',
     afterDraw(chart) {
-      const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
-      if (!x || !window.currentDeltaSpotPrice || !window.currentDeltaStrikes) return;
+      const { ctx, chartArea: { top, bottom, left, right }, scales: { x, y } } = chart;
+      if (!window.currentDeltaSpotPrice || !window.currentDeltaStrikes) return;
 
       const spot = window.currentDeltaSpotPrice;
       const strikes = window.currentDeltaStrikes;
@@ -745,6 +862,32 @@ document.addEventListener('DOMContentLoaded', () => {
           break;
         }
       }
+
+      // Check if chart is horizontal (Butterfly)
+      if (chart.config.options && chart.config.options.indexAxis === 'y') {
+        if (idxA !== -1 && idxB !== -1 && y) {
+          const yA = y.getPixelForTick(idxA);
+          const yB = y.getPixelForTick(idxB);
+          const ratio = (spot - strikes[idxA]) / (strikes[idxB] - strikes[idxA]);
+          const yPixel = yA + ratio * (yB - yA);
+
+          if (yPixel >= top && yPixel <= bottom) {
+            ctx.save();
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(left, yPixel);
+            ctx.lineTo(right, yPixel);
+            ctx.stroke();
+            ctx.restore();
+          }
+        }
+        return;
+      }
+
+      // Standard Vertical Chart Spot Line
+      if (!x) return;
 
       let xPixel = null;
       if (idxA !== -1 && idxB !== -1) {
