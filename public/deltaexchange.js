@@ -501,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
           grid: { color: gridColor },
           ticks: {
             color: tickColor,
-            font: { family: "'JetBrains Mono', monospace", size: 10 },
+            font: { family: "'JetBrains Mono', monospace", size: 11 },
             callback: function(val, idx) {
               const s = strikes[idx];
               return s === atmStrike ? `${s} (ATM)` : s;
@@ -513,8 +513,8 @@ document.addEventListener('DOMContentLoaded', () => {
           grid: { color: gridColor },
           ticks: {
             color: tickColor,
-            font: { family: "'JetBrains Mono', monospace", size: 10 },
-            callback: function(val) { return formatUsd(val); }
+            font: { family: "'JetBrains Mono', monospace", size: 11 },
+            callback: function(val) { return formatNumberCompact(val); }
           }
         }
       }
@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
     afterDatasetsDraw(chart) {
       const { ctx } = chart;
       ctx.save();
-      ctx.font = 'bold 10px "JetBrains Mono", monospace';
+      ctx.font = 'bold 11px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
 
       chart.data.datasets.forEach((dataset, datasetIndex) => {
@@ -538,7 +538,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const val = dataset.data[index];
           if (val === undefined || val === null || val === 0) return;
 
-          const label = formatUsd(val);
+          const label = formatNumberCompact(val);
           const isPositive = val >= 0;
           const padding = 6;
           ctx.textBaseline = isPositive ? 'bottom' : 'top';
@@ -739,6 +739,15 @@ document.addEventListener('DOMContentLoaded', () => {
     if (absVal >= 1e6) return `$${(val / 1e6).toFixed(2)}M`;
     if (absVal >= 1e3) return `$${(val / 1e3).toFixed(2)}K`;
     return `$${val.toFixed(2)}`;
+  }
+
+  function formatNumberCompact(val) {
+    if (!val || isNaN(val)) return '0';
+    const absVal = Math.abs(val);
+    if (absVal >= 1e9) return `${(val / 1e9).toFixed(2)}B`;
+    if (absVal >= 1e6) return `${(val / 1e6).toFixed(2)}M`;
+    if (absVal >= 1e3) return `${(val / 1e3).toFixed(2)}K`;
+    return `${val.toFixed(2)}`;
   }
 
   function formatChgOiHtml(val) {
