@@ -8,8 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let totalOiChartInstance = null;
   let oiChartInstance = null;
   let volumeChartInstance = null;
-  let butterflyCallChartInstance = null;
-  let butterflyPutChartInstance = null;
+  let butterflyOiChartInstance = null;
 
   const REFRESH_INTERVAL_SEC = 30;
   let countdown = REFRESH_INTERVAL_SEC;
@@ -78,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    [totalOiChartInstance, volumeChartInstance, butterflyCallChartInstance, butterflyPutChartInstance].forEach(chart => {
+    [totalOiChartInstance, volumeChartInstance, butterflyOiChartInstance].forEach(chart => {
       if (!chart) return;
       if (chart.options.scales.x) {
         if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
@@ -126,25 +125,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const butterflyPutDot = document.getElementById('delta-legend-butterfly-put-dot');
     if (butterflyPutDot) butterflyPutDot.style.background = deltaChartColors.puts;
 
-    [totalOiChartInstance, volumeChartInstance].forEach(chart => {
+    [totalOiChartInstance, volumeChartInstance, butterflyOiChartInstance].forEach(chart => {
       if (!chart) return;
-      chart.data.datasets[0].backgroundColor = deltaChartColors.calls;
-      chart.data.datasets[0].borderColor = deltaChartColors.calls;
-      chart.data.datasets[1].backgroundColor = deltaChartColors.puts;
-      chart.data.datasets[1].borderColor = deltaChartColors.puts;
+      if (chart.data && chart.data.datasets && chart.data.datasets.length >= 2) {
+        chart.data.datasets[0].backgroundColor = deltaChartColors.calls;
+        chart.data.datasets[0].borderColor = deltaChartColors.calls;
+        chart.data.datasets[1].backgroundColor = deltaChartColors.puts;
+        chart.data.datasets[1].borderColor = deltaChartColors.puts;
+      }
       chart.update();
     });
-
-    if (butterflyCallChartInstance) {
-      butterflyCallChartInstance.data.datasets[0].backgroundColor = deltaChartColors.calls;
-      butterflyCallChartInstance.data.datasets[0].borderColor = deltaChartColors.calls;
-      butterflyCallChartInstance.update();
-    }
-    if (butterflyPutChartInstance) {
-      butterflyPutChartInstance.data.datasets[0].backgroundColor = deltaChartColors.puts;
-      butterflyPutChartInstance.data.datasets[0].borderColor = deltaChartColors.puts;
-      butterflyPutChartInstance.update();
-    }
 
     saveColors();
   }
@@ -527,55 +517,43 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 3. Butterfly Total Open Interest (Contracts) Bar Chart (Horizontal 3-Column Split Layout)
-    const maxContract = Math.max(...callTotalOi, ...putTotalOi, 100);
+    // 3. Butterfly Total Open Interest (Contracts) Bar Chart (Unified Single Canvas 100% Mathematically Aligned)
     const isLight = document.documentElement.getAttribute('data-theme') === 'light';
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    // Populate Center Column (Strike Price & Ratio Numbers)
-    renderButterflyCenterColumn(items, spotPrice, atmStrike);
-
-    // Left Call Chart (Reverse X-Axis so bars grow LEFTWARDS from center gap)
-    const ctxCall = document.getElementById('deltaButterflyCallChart').getContext('2d');
-    if (butterflyCallChartInstance) {
-      butterflyCallChartInstance.data.labels = strikes;
-      butterflyCallChartInstance.data.datasets[0].data = callTotalOi;
-      butterflyCallChartInstance.options.scales.x.max = maxContract * 1.15;
-      butterflyCallChartInstance.update();
+    const ctxButterfly = document.getElementById('deltaButterflyOiChart').getContext('2d');
+    if (butterflyOiChartInstance) {
+      butterflyOiChartInstance.data.labels = strikes;
+      butterflyOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi };
+      butterflyOiChartInstance.update();
     } else {
-      butterflyCallChartInstance = new Chart(ctxCall, {
+      butterflyOiChartInstance = new Chart(ctxButterfly, {
         type: 'bar',
         data: {
           labels: strikes,
           datasets: [{
-            label: 'Call OI Contracts',
-            data: callTotalOi,
-            backgroundColor: deltaChartColors.calls,
-            borderColor: deltaChartColors.calls,
-            borderRadius: 4,
-            categoryPercentage: 0.85,
-            barPercentage: 0.85
+            data: strikes.map(() => 0), // Dummy data to establish Y-scale ticks
+            backgroundColor: 'transparent'
           }]
         },
         options: {
           indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
-          layout: { padding: { left: 45, right: 0, top: 10, bottom: 10 } },
+          layout: { padding: { left: 10, right: 10, top: 15, bottom: 25 } },
+          ratioData: { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi },
           plugins: {
             legend: { display: false },
             tooltip: { enabled: false }
           },
           scales: {
             x: {
-              reverse: true, // Bars grow LEFTWARDS!
-              max: maxContract * 1.15,
               grid: { color: gridColor },
               ticks: {
                 color: tickColor,
                 font: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
-                callback: function(val) { return formatNumberCompact(val); }
+                callback: function(val) { return formatNumberCompact(Math.abs(val)); }
               }
             },
             y: {
@@ -584,97 +562,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         },
-        plugins: [deltaButterflyLeftDatalabelsPlugin]
+        plugins: [deltaButterflyUnifiedPlugin]
       });
     }
-
-    // Right Put Chart (Normal X-Axis so bars grow RIGHTWARDS from center gap)
-    const ctxPut = document.getElementById('deltaButterflyPutChart').getContext('2d');
-    if (butterflyPutChartInstance) {
-      butterflyPutChartInstance.data.labels = strikes;
-      butterflyPutChartInstance.data.datasets[0].data = putTotalOi;
-      butterflyPutChartInstance.options.scales.x.max = maxContract * 1.15;
-      butterflyPutChartInstance.update();
-    } else {
-      butterflyPutChartInstance = new Chart(ctxPut, {
-        type: 'bar',
-        data: {
-          labels: strikes,
-          datasets: [{
-            label: 'Put OI Contracts',
-            data: putTotalOi,
-            backgroundColor: deltaChartColors.puts,
-            borderColor: deltaChartColors.puts,
-            borderRadius: 4,
-            categoryPercentage: 0.85,
-            barPercentage: 0.85
-          }]
-        },
-        options: {
-          indexAxis: 'y',
-          responsive: true,
-          maintainAspectRatio: false,
-          layout: { padding: { left: 0, right: 45, top: 10, bottom: 10 } },
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          },
-          scales: {
-            x: {
-              reverse: false, // Bars grow RIGHTWARDS!
-              max: maxContract * 1.15,
-              grid: { color: gridColor },
-              ticks: {
-                color: tickColor,
-                font: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
-                callback: function(val) { return formatNumberCompact(val); }
-              }
-            },
-            y: {
-              grid: { display: false },
-              ticks: { display: false }
-            }
-          }
-        },
-        plugins: [deltaButterflyRightDatalabelsPlugin]
-      });
-    }
-  }
-
-  function renderButterflyCenterColumn(items, spotPrice, atmStrike) {
-    const centerCol = document.getElementById('deltaButterflyCenterColumn');
-    if (!centerCol) return;
-
-    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-
-    centerCol.innerHTML = items.map(item => {
-      const s = item.strike_price;
-      const isAtm = (s === atmStrike);
-      const callOi = item.calls_oi_contracts || 0;
-      const putOi  = item.puts_oi_contracts || 0;
-      const ratioStr = calculateRatio(callOi, putOi);
-
-      const bgStyle = isAtm
-        ? (isLight ? 'background: #ffedd5; border: 1.5px solid #f97316;' : 'background: #1e1b4b; border: 1.5px solid #f97316;')
-        : (isLight ? 'background: #ffffff; border: 1px solid #cbd5e1;' : 'background: #0f172a; border: 1px solid #334155;');
-
-      const strikeColor = isAtm
-        ? (isLight ? '#c2410c' : '#fb923c')
-        : (isLight ? '#0f172a' : '#f8fafc');
-
-      const ratioColor = isLight ? '#d97706' : '#f59e0b';
-
-      return `
-        <div class="butterfly-center-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; border-radius: 6px; ${bgStyle} box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin: 2px 0;">
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 800; color: ${strikeColor}; white-space: nowrap;">
-            ${s}${isAtm ? ' ATM' : ''}
-          </span>
-          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; font-weight: 800; color: ${ratioColor}; white-space: nowrap;">
-            ${ratioStr}
-          </span>
-        </div>
-      `;
-    }).join('');
   }
 
   function calculateRatio(val1, val2) {
@@ -799,62 +689,191 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Data Labels Plugin for Left Call Butterfly Bar Chart (Extends Left)
-  const deltaButterflyLeftDatalabelsPlugin = {
-    id: 'deltaButterflyLeftDatalabels',
-    afterDatasetsDraw(chart) {
-      const { ctx } = chart;
+  // 100% Mathematically Aligned Unified Butterfly Chart Plugin
+  const deltaButterflyUnifiedPlugin = {
+    id: 'deltaButterflyUnified',
+    afterDraw(chart) {
+      if (!chart.config.options || !chart.config.options.ratioData) return;
+      const { strikes, atmStrike, data1, data2 } = chart.config.options.ratioData;
+      if (!strikes || !data1 || !data2 || strikes.length === 0) return;
+
+      const { ctx, chartArea: { top, bottom, left, right }, scales: { y } } = chart;
+      if (!y) return;
+
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
       ctx.save();
-      ctx.font = 'bold 11px "JetBrains Mono", monospace';
-      ctx.textAlign = 'right';
-      ctx.textBaseline = 'middle';
 
-      const dataset = chart.data.datasets[0];
-      const meta = chart.getDatasetMeta(0);
-      if (!meta || meta.hidden) return;
+      const totalWidth = right - left;
+      const centerX = left + totalWidth / 2;
+      const gapWidth = 170; // 170px center gap
+      const leftMargin = centerX - gapWidth / 2;
+      const rightMargin = centerX + gapWidth / 2;
 
-      meta.data.forEach((bar, index) => {
-        const val = dataset.data[index];
-        if (val === undefined || val === null || val === 0) return;
+      const outerPadding = 55; // Space for outer datalabels
+      const leftAvailableWidth = leftMargin - (left + outerPadding);
+      const rightAvailableWidth = (right - outerPadding) - rightMargin;
 
-        const label = formatNumberCompact(val);
-        let fillClr = deltaChartColors.calls;
-        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        if (isLight && fillClr === '#ef4444') fillClr = '#dc2626';
-        ctx.fillStyle = fillClr;
+      const maxVal = Math.max(...data1, ...data2, 100);
 
-        ctx.fillText(label, bar.x - 6, bar.y);
+      // 1. Draw Vertical Gap Boundaries (Dashed dividing lines)
+      ctx.strokeStyle = isLight ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+
+      ctx.beginPath();
+      ctx.moveTo(leftMargin, top);
+      ctx.lineTo(leftMargin, bottom);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(rightMargin, top);
+      ctx.lineTo(rightMargin, bottom);
+      ctx.stroke();
+
+      ctx.setLineDash([]);
+
+      // Calculate bar height dynamically from tick spacing
+      const tickSpacing = strikes.length > 1
+        ? Math.abs(y.getPixelForTick(1) - y.getPixelForTick(0))
+        : 35;
+      const barHeight = Math.min(Math.max(tickSpacing * 0.72, 12), 32);
+      const badgeHeight = Math.min(barHeight + 2, 30);
+      const badgeWidth = gapWidth - 10; // 160px
+
+      // 2. Render each Strike Price row (Bars + Datalabels + Center Badge)
+      strikes.forEach((s, idx) => {
+        const yPixel = y.getPixelForTick(idx);
+        if (yPixel === undefined || yPixel === null) return;
+        if (yPixel < top - 10 || yPixel > bottom + 10) return;
+
+        const isAtm = (s === atmStrike);
+        const callVal = data1[idx] || 0;
+        const putVal  = data2[idx] || 0;
+        const ratioStr = calculateRatio(callVal, putVal);
+
+        // A. Draw Left Call Bar (Starts at leftMargin, grows LEFTWARDS)
+        if (callVal > 0) {
+          const callWidth = Math.max((callVal / maxVal) * leftAvailableWidth, 3);
+          const barX = leftMargin - callWidth;
+          const barY = yPixel - barHeight / 2;
+
+          let callClr = deltaChartColors.calls;
+          if (isLight && callClr === '#ef4444') callClr = '#dc2626';
+
+          ctx.fillStyle = callClr;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(barX, barY, callWidth, barHeight, 4);
+          } else {
+            ctx.rect(barX, barY, callWidth, barHeight);
+          }
+          ctx.fill();
+
+          // Left Call Datalabel
+          ctx.font = 'bold 11px "JetBrains Mono", monospace';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = callClr;
+          ctx.fillText(formatNumberCompact(callVal), barX - 6, yPixel);
+        }
+
+        // B. Draw Right Put Bar (Starts at rightMargin, grows RIGHTWARDS)
+        if (putVal > 0) {
+          const putWidth = Math.max((putVal / maxVal) * rightAvailableWidth, 3);
+          const barX = rightMargin;
+          const barY = yPixel - barHeight / 2;
+
+          let putClr = deltaChartColors.puts;
+          if (isLight && putClr === '#10b981') putClr = '#059669';
+
+          ctx.fillStyle = putClr;
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(barX, barY, putWidth, barHeight, 4);
+          } else {
+            ctx.rect(barX, barY, putWidth, barHeight);
+          }
+          ctx.fill();
+
+          // Right Put Datalabel
+          ctx.font = 'bold 11px "JetBrains Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = putClr;
+          ctx.fillText(formatNumberCompact(putVal), barX + putWidth + 6, yPixel);
+        }
+
+        // C. Draw Center Column Badge (Centered at exact same yPixel!)
+        const bX = centerX - badgeWidth / 2;
+        const bY = yPixel - badgeHeight / 2;
+
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(bX, bY, badgeWidth, badgeHeight, 6);
+        } else {
+          ctx.rect(bX, bY, badgeWidth, badgeHeight);
+        }
+
+        if (isAtm) {
+          ctx.fillStyle = isLight ? '#ffedd5' : '#1e1b4b';
+          ctx.strokeStyle = '#f97316';
+          ctx.lineWidth = 2;
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillStyle = isLight ? '#ffffff' : '#0f172a';
+          ctx.strokeStyle = isLight ? '#cbd5e1' : '#334155';
+          ctx.lineWidth = 1.2;
+          ctx.fill();
+          ctx.stroke();
+        }
+
+        // Strike Price (Left side of center badge)
+        ctx.font = 'bold 12px "JetBrains Mono", monospace';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = isAtm ? (isLight ? '#c2410c' : '#fb923c') : (isLight ? '#0f172a' : '#f8fafc');
+        const strikeText = isAtm ? `${s} ATM` : `${s}`;
+        ctx.fillText(strikeText, bX + 8, yPixel);
+
+        // Ratio Number (Right side of center badge in 15px Bold Amber Gold)
+        ctx.font = 'bold 15px "JetBrains Mono", monospace';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = isLight ? '#d97706' : '#f59e0b';
+        ctx.fillText(ratioStr, bX + badgeWidth - 8, yPixel);
       });
-      ctx.restore();
-    }
-  };
 
-  // Data Labels Plugin for Right Put Butterfly Bar Chart (Extends Right)
-  const deltaButterflyRightDatalabelsPlugin = {
-    id: 'deltaButterflyRightDatalabels',
-    afterDatasetsDraw(chart) {
-      const { ctx } = chart;
-      ctx.save();
-      ctx.font = 'bold 11px "JetBrains Mono", monospace';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
+      // 3. Horizontal Spot Price Line (if applicable)
+      if (window.currentDeltaSpotPrice && window.currentDeltaStrikes) {
+        const spot = window.currentDeltaSpotPrice;
+        const strikesArr = window.currentDeltaStrikes;
+        let idxA = -1, idxB = -1;
+        for (let i = 0; i < strikesArr.length - 1; i++) {
+          if (spot >= strikesArr[i] && spot <= strikesArr[i + 1]) {
+            idxA = i;
+            idxB = i + 1;
+            break;
+          }
+        }
+        if (idxA !== -1 && idxB !== -1) {
+          const yA = y.getPixelForTick(idxA);
+          const yB = y.getPixelForTick(idxB);
+          const frac = (spot - strikesArr[idxA]) / (strikesArr[idxB] - strikesArr[idxA]);
+          const spotY = yA + frac * (yB - yA);
+          if (spotY >= top && spotY <= bottom) {
+            ctx.strokeStyle = '#f97316';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([4, 4]);
+            ctx.beginPath();
+            ctx.moveTo(left, spotY);
+            ctx.lineTo(right, spotY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+          }
+        }
+      }
 
-      const dataset = chart.data.datasets[0];
-      const meta = chart.getDatasetMeta(0);
-      if (!meta || meta.hidden) return;
-
-      meta.data.forEach((bar, index) => {
-        const val = dataset.data[index];
-        if (val === undefined || val === null || val === 0) return;
-
-        const label = formatNumberCompact(val);
-        let fillClr = deltaChartColors.puts;
-        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
-        if (isLight && fillClr === '#10b981') fillClr = '#059669';
-        ctx.fillStyle = fillClr;
-
-        ctx.fillText(label, bar.x + 6, bar.y);
-      });
       ctx.restore();
     }
   };

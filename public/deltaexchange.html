@@ -193,7 +193,7 @@
         </div>
       </section>
 
-      <!-- 3. Butterfly Total Open Interest (Contracts) Bar Chart (Horizontal 3-Column Split Layout) -->
+      <!-- 3. Butterfly Total Open Interest (Contracts) Bar Chart -->
       <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-top: 24px;">
         <div class="section-title">
           <div class="title-details">
@@ -205,23 +205,8 @@
             <div class="legend-item"><span class="legend-dot" id="delta-legend-butterfly-put-dot" style="background: #10b981;"></span>Put OI (Right)</div>
           </div>
         </div>
-
-        <!-- 3-Column Split Container: Left Call Chart | Center Gap Strikes & Ratios | Right Put Chart -->
-        <div class="butterfly-split-container" style="display: flex; align-items: stretch; width: 100%; min-height: 650px; position: relative;">
-          <!-- Left: Call OI Chart (Bars grow LEFTWARDS) -->
-          <div style="flex: 1; min-width: 0; position: relative;">
-            <canvas id="deltaButterflyCallChart"></canvas>
-          </div>
-
-          <!-- Middle: Center Gap Column for Strike Price & Ratio Numbers -->
-          <div id="deltaButterflyCenterColumn" style="width: 170px; display: flex; flex-direction: column; justify-content: space-around; padding: 36px 4px; box-sizing: border-box; flex-shrink: 0; z-index: 10;">
-            <!-- Dynamically populated strike rows -->
-          </div>
-
-          <!-- Right: Put OI Chart (Bars grow RIGHTWARDS) -->
-          <div style="flex: 1; min-width: 0; position: relative;">
-            <canvas id="deltaButterflyPutChart"></canvas>
-          </div>
+        <div class="vertical-chart-container" style="height: 850px; position: relative;">
+          <canvas id="deltaButterflyOiChart"></canvas>
         </div>
       </section>
     </main>
