@@ -522,7 +522,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    const ctxButterfly = document.getElementById('deltaButterflyOiChart').getContext('2d');
+    // Dynamically adjust Butterfly chart height based on strike count so rows never collapse!
+    const butterflyCanvas = document.getElementById('deltaButterflyOiChart');
+    if (butterflyCanvas && butterflyCanvas.parentElement) {
+      const calcHeight = Math.max(strikes.length * 40 + 80, 500);
+      butterflyCanvas.parentElement.style.height = `${calcHeight}px`;
+    }
+
+    const ctxButterfly = butterflyCanvas.getContext('2d');
     if (butterflyOiChartInstance) {
       butterflyOiChartInstance.data.labels = strikes;
       butterflyOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi };
