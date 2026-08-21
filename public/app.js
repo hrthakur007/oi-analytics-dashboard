@@ -1253,6 +1253,39 @@ const spotLinePlugin = {
   }
 };
 
+const appRatioTicksPlugin = {
+  id: 'appRatioTicks',
+  afterDraw(chart) {
+    if (!chart.config.options || !chart.config.options.ratioData) return;
+    const { strikes, data1, data2 } = chart.config.options.ratioData;
+    if (!strikes || !data1 || !data2) return;
+
+    const { ctx, chartArea, scales: { x } } = chart;
+    if (!x) return;
+
+    ctx.save();
+    ctx.font = 'bold 10px "JetBrains Mono", monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    ctx.fillStyle = isLight ? '#d97706' : '#f59e0b';
+
+    const ratioY = x.bottom + 26;
+
+    strikes.forEach((s, idx) => {
+      const xPixel = x.getPixelForTick(idx);
+      if (xPixel === undefined || xPixel === null) return;
+      if (xPixel < chartArea.left - 10 || xPixel > chartArea.right + 10) return;
+
+      const ratioStr = calculateRatio(data1[idx], data2[idx]);
+      ctx.fillText(ratioStr, xPixel, ratioY);
+    });
+
+    ctx.restore();
+  }
+};
+
 function calculateRatio(val1, val2) {
   const v1 = Math.abs(val1 || 0);
   const v2 = Math.abs(val2 || 0);
@@ -1282,11 +1315,9 @@ function renderVerticalChart(oiList, atmStrike) {
     
     oiVerticalChartInstance.options.scales.x.ticks.callback = function(val, idx) {
       const strikeVal = parseInt(strikes[idx]);
-      const isATM = strikeVal === atmStrike;
-      const str = isATM ? `${strikeVal} (ATM)` : strikeVal.toString();
-      return [str, calculateRatio(callsData[idx], putsData[idx])];
+      return strikeVal === atmStrike ? `${strikeVal} (ATM)` : strikeVal.toString();
     };
-    
+    oiVerticalChartInstance.options.ratioData = { strikes, data1: callsData, data2: putsData };
     oiVerticalChartInstance.update();
     return;
   }
@@ -1328,9 +1359,10 @@ function renderVerticalChart(oiList, atmStrike) {
       layout: {
         padding: {
           top: 45,
-          bottom: 10
+          bottom: 45
         }
       },
+      ratioData: { strikes, data1: callsData, data2: putsData },
       plugins: {
         legend: {
           display: false
@@ -1351,11 +1383,10 @@ function renderVerticalChart(oiList, atmStrike) {
               family: "'JetBrains Mono', monospace",
               weight: 600
             },
+            padding: 4,
             callback: function(val, idx) {
               const strikeVal = parseInt(strikes[idx]);
-              const isATM = strikeVal === atmStrike;
-              const str = isATM ? `${strikeVal} (ATM)` : strikeVal.toString();
-              return [str, calculateRatio(callsData[idx], putsData[idx])];
+              return strikeVal === atmStrike ? `${strikeVal} (ATM)` : strikeVal.toString();
             }
           }
         },
@@ -1377,7 +1408,7 @@ function renderVerticalChart(oiList, atmStrike) {
         }
       }
     },
-    plugins: [datalabelsPlugin, spotLinePlugin]
+    plugins: [datalabelsPlugin, spotLinePlugin, appRatioTicksPlugin]
   });
 }
 
@@ -1397,9 +1428,9 @@ function renderVolumeChart(oiList, atmStrike) {
     volumeChartInstance.data.datasets[1].data = putsVol;
     volumeChartInstance.options.scales.x.ticks.callback = function(val, idx) {
       const s = parseInt(strikes[idx]);
-      const str = s === atmStrike ? `${s} (ATM)` : s.toString();
-      return [str, calculateRatio(callsVol[idx], putsVol[idx])];
+      return s === atmStrike ? `${s} (ATM)` : s.toString();
     };
+    volumeChartInstance.options.ratioData = { strikes, data1: callsVol, data2: putsVol };
     volumeChartInstance.update();
     return;
   }
@@ -1430,7 +1461,8 @@ function renderVolumeChart(oiList, atmStrike) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 45, bottom: 10 } },
+      layout: { padding: { top: 45, bottom: 45 } },
+      ratioData: { strikes, data1: callsVol, data2: putsVol },
       plugins: {
         legend: { display: false },
         tooltip: { enabled: false }
@@ -1441,6 +1473,7 @@ function renderVolumeChart(oiList, atmStrike) {
           ticks: {
             color: '#94a3b8',
             font: { family: "'JetBrains Mono', monospace", weight: 600 },
+            padding: 4,
             callback: function(val, idx) {
               const s = parseInt(strikes[idx]);
               return s === atmStrike ? `${s} (ATM)` : s.toString();
@@ -1458,7 +1491,7 @@ function renderVolumeChart(oiList, atmStrike) {
         }
       }
     },
-    plugins: [datalabelsPlugin, spotLinePlugin]
+    plugins: [datalabelsPlugin, spotLinePlugin, appRatioTicksPlugin]
   });
 }
 

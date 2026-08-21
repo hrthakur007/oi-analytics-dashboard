@@ -414,9 +414,9 @@ document.addEventListener('DOMContentLoaded', () => {
       oiChartInstance.data.datasets[1].data = putOi;
       oiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
         const s = strikes[idx];
-        const str = s === atmStrike ? `${s} (ATM)` : `${s}`;
-        return [str, calculateRatio(callOi[idx], putOi[idx])];
+        return s === atmStrike ? `${s} (ATM)` : `${s}`;
       };
+      oiChartInstance.options.ratioData = { strikes, atmStrike, data1: callOi, data2: putOi };
       oiChartInstance.update();
     } else {
       oiChartInstance = new Chart(ctxOi, {
@@ -441,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ]
         },
         options: getChartOptions(strikes, atmStrike, callOi, putOi),
-        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
+        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
       });
     }
 
@@ -453,9 +453,9 @@ document.addEventListener('DOMContentLoaded', () => {
       volumeChartInstance.data.datasets[1].data = putVol;
       volumeChartInstance.options.scales.x.ticks.callback = function(val, idx) {
         const s = strikes[idx];
-        const str = s === atmStrike ? `${s} (ATM)` : `${s}`;
-        return [str, calculateRatio(callVol[idx], putVol[idx])];
+        return s === atmStrike ? `${s} (ATM)` : `${s}`;
       };
+      volumeChartInstance.options.ratioData = { strikes, atmStrike, data1: callVol, data2: putVol };
       volumeChartInstance.update();
     } else {
       volumeChartInstance = new Chart(ctxVol, {
@@ -480,7 +480,7 @@ document.addEventListener('DOMContentLoaded', () => {
           ]
         },
         options: getChartOptions(strikes, atmStrike, callVol, putVol),
-        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin]
+        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
       });
     }
   }
@@ -508,7 +508,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return {
       responsive: true,
       maintainAspectRatio: false,
-      layout: { padding: { top: 45, bottom: 10 } },
+      layout: { padding: { top: 45, bottom: 45 } },
+      ratioData: { strikes, atmStrike, data1, data2 },
       plugins: {
         legend: { display: false },
         tooltip: { enabled: false }
@@ -518,14 +519,11 @@ document.addEventListener('DOMContentLoaded', () => {
           grid: { color: gridColor },
           ticks: {
             color: tickColor,
-            font: { family: "'JetBrains Mono', monospace", size: 11 },
+            font: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
+            padding: 4,
             callback: function(val, idx) {
               const s = strikes[idx];
-              const str = s === atmStrike ? `${s} (ATM)` : `${s}`;
-              if (data1 && data2 && data1[idx] !== undefined) {
-                return [str, calculateRatio(data1[idx], data2[idx])];
-              }
-              return str;
+              return s === atmStrike ? `${s} (ATM)` : `${s}`;
             }
           }
         },
@@ -541,6 +539,41 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
   }
+
+  // Plugin to render ratio numbers with distinct color and 10px gap below strike prices
+  const deltaRatioTicksPlugin = {
+    id: 'deltaRatioTicks',
+    afterDraw(chart) {
+      if (!chart.config.options || !chart.config.options.ratioData) return;
+      const { strikes, data1, data2 } = chart.config.options.ratioData;
+      if (!strikes || !data1 || !data2) return;
+
+      const { ctx, chartArea, scales: { x } } = chart;
+      if (!x) return;
+
+      ctx.save();
+      ctx.font = 'bold 10px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+
+      const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+      // Distinct Amber Gold color for ratio number to be easily identifiable
+      ctx.fillStyle = isLight ? '#d97706' : '#f59e0b';
+
+      const ratioY = x.bottom + 26; // 10px gap below strike price label
+
+      strikes.forEach((s, idx) => {
+        const xPixel = x.getPixelForTick(idx);
+        if (xPixel === undefined || xPixel === null) return;
+        if (xPixel < chartArea.left - 10 || xPixel > chartArea.right + 10) return;
+
+        const ratioStr = calculateRatio(data1[idx], data2[idx]);
+        ctx.fillText(ratioStr, xPixel, ratioY);
+      });
+
+      ctx.restore();
+    }
+  };
 
   // Data Labels Plugin for Delta Exchange Bar Chart
   const deltaDatalabelsPlugin = {
