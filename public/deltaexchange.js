@@ -8,7 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let totalOiChartInstance = null;
   let oiChartInstance = null;
   let volumeChartInstance = null;
-  let butterflyOiChartInstance = null;
+  let butterflyCallChartInstance = null;
+  let butterflyPutChartInstance = null;
 
   const REFRESH_INTERVAL_SEC = 30;
   let countdown = REFRESH_INTERVAL_SEC;
@@ -77,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    [totalOiChartInstance, volumeChartInstance, butterflyOiChartInstance].forEach(chart => {
+    [totalOiChartInstance, volumeChartInstance, butterflyCallChartInstance, butterflyPutChartInstance].forEach(chart => {
       if (!chart) return;
       if (chart.options.scales.x) {
         if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
@@ -125,7 +126,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const butterflyPutDot = document.getElementById('delta-legend-butterfly-put-dot');
     if (butterflyPutDot) butterflyPutDot.style.background = deltaChartColors.puts;
 
-    [totalOiChartInstance, volumeChartInstance, butterflyOiChartInstance].forEach(chart => {
+    [totalOiChartInstance, volumeChartInstance].forEach(chart => {
       if (!chart) return;
       chart.data.datasets[0].backgroundColor = deltaChartColors.calls;
       chart.data.datasets[0].borderColor = deltaChartColors.calls;
@@ -133,6 +134,17 @@ document.addEventListener('DOMContentLoaded', () => {
       chart.data.datasets[1].borderColor = deltaChartColors.puts;
       chart.update();
     });
+
+    if (butterflyCallChartInstance) {
+      butterflyCallChartInstance.data.datasets[0].backgroundColor = deltaChartColors.calls;
+      butterflyCallChartInstance.data.datasets[0].borderColor = deltaChartColors.calls;
+      butterflyCallChartInstance.update();
+    }
+    if (butterflyPutChartInstance) {
+      butterflyPutChartInstance.data.datasets[0].backgroundColor = deltaChartColors.puts;
+      butterflyPutChartInstance.data.datasets[0].borderColor = deltaChartColors.puts;
+      butterflyPutChartInstance.update();
+    }
 
     saveColors();
   }
@@ -515,47 +527,154 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
-    // 3. Butterfly Total Open Interest (Contracts) Bar Chart (Horizontal Split)
-    const callTotalOiNeg = items.map(i => -(i.calls_oi_contracts || 0)); // Extends LEFT
-    const putTotalOiPos  = items.map(i => +(i.puts_oi_contracts || 0));  // Extends RIGHT
+    // 3. Butterfly Total Open Interest (Contracts) Bar Chart (Horizontal 3-Column Split Layout)
+    const maxContract = Math.max(...callTotalOi, ...putTotalOi, 100);
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
+    const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    const ctxButterfly = document.getElementById('deltaButterflyOiChart').getContext('2d');
-    if (butterflyOiChartInstance) {
-      butterflyOiChartInstance.data.labels = strikes;
-      butterflyOiChartInstance.data.datasets[0].data = callTotalOiNeg;
-      butterflyOiChartInstance.data.datasets[1].data = putTotalOiPos;
-      butterflyOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi };
-      butterflyOiChartInstance.update();
+    // Populate Center Column (Strike Price & Ratio Numbers)
+    renderButterflyCenterColumn(items, spotPrice, atmStrike);
+
+    // Left Call Chart (Reverse X-Axis so bars grow LEFTWARDS from center gap)
+    const ctxCall = document.getElementById('deltaButterflyCallChart').getContext('2d');
+    if (butterflyCallChartInstance) {
+      butterflyCallChartInstance.data.labels = strikes;
+      butterflyCallChartInstance.data.datasets[0].data = callTotalOi;
+      butterflyCallChartInstance.options.scales.x.max = maxContract * 1.15;
+      butterflyCallChartInstance.update();
     } else {
-      butterflyOiChartInstance = new Chart(ctxButterfly, {
+      butterflyCallChartInstance = new Chart(ctxCall, {
         type: 'bar',
         data: {
           labels: strikes,
-          datasets: [
-            { 
-              label: 'Call OI Contracts (Left)', 
-              data: callTotalOiNeg, 
-              backgroundColor: deltaChartColors.calls, 
-              borderColor: deltaChartColors.calls, 
-              borderRadius: 4,
-              categoryPercentage: 0.85,
-              barPercentage: 0.85
-            },
-            { 
-              label: 'Put OI Contracts (Right)', 
-              data: putTotalOiPos, 
-              backgroundColor: deltaChartColors.puts, 
-              borderColor: deltaChartColors.puts, 
-              borderRadius: 4,
-              categoryPercentage: 0.85,
-              barPercentage: 0.85
-            }
-          ]
+          datasets: [{
+            label: 'Call OI Contracts',
+            data: callTotalOi,
+            backgroundColor: deltaChartColors.calls,
+            borderColor: deltaChartColors.calls,
+            borderRadius: 4,
+            categoryPercentage: 0.85,
+            barPercentage: 0.85
+          }]
         },
-        options: getButterflyChartOptions(strikes, atmStrike, callTotalOi, putTotalOi),
-        plugins: [deltaButterflyDatalabelsPlugin, deltaSpotLinePlugin, deltaButterflyCenterTicksPlugin]
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 45, right: 0, top: 10, bottom: 10 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: {
+              reverse: true, // Bars grow LEFTWARDS!
+              max: maxContract * 1.15,
+              grid: { color: gridColor },
+              ticks: {
+                color: tickColor,
+                font: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
+                callback: function(val) { return formatNumberCompact(val); }
+              }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { display: false }
+            }
+          }
+        },
+        plugins: [deltaButterflyLeftDatalabelsPlugin]
       });
     }
+
+    // Right Put Chart (Normal X-Axis so bars grow RIGHTWARDS from center gap)
+    const ctxPut = document.getElementById('deltaButterflyPutChart').getContext('2d');
+    if (butterflyPutChartInstance) {
+      butterflyPutChartInstance.data.labels = strikes;
+      butterflyPutChartInstance.data.datasets[0].data = putTotalOi;
+      butterflyPutChartInstance.options.scales.x.max = maxContract * 1.15;
+      butterflyPutChartInstance.update();
+    } else {
+      butterflyPutChartInstance = new Chart(ctxPut, {
+        type: 'bar',
+        data: {
+          labels: strikes,
+          datasets: [{
+            label: 'Put OI Contracts',
+            data: putTotalOi,
+            backgroundColor: deltaChartColors.puts,
+            borderColor: deltaChartColors.puts,
+            borderRadius: 4,
+            categoryPercentage: 0.85,
+            barPercentage: 0.85
+          }]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          layout: { padding: { left: 0, right: 45, top: 10, bottom: 10 } },
+          plugins: {
+            legend: { display: false },
+            tooltip: { enabled: false }
+          },
+          scales: {
+            x: {
+              reverse: false, // Bars grow RIGHTWARDS!
+              max: maxContract * 1.15,
+              grid: { color: gridColor },
+              ticks: {
+                color: tickColor,
+                font: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
+                callback: function(val) { return formatNumberCompact(val); }
+              }
+            },
+            y: {
+              grid: { display: false },
+              ticks: { display: false }
+            }
+          }
+        },
+        plugins: [deltaButterflyRightDatalabelsPlugin]
+      });
+    }
+  }
+
+  function renderButterflyCenterColumn(items, spotPrice, atmStrike) {
+    const centerCol = document.getElementById('deltaButterflyCenterColumn');
+    if (!centerCol) return;
+
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+
+    centerCol.innerHTML = items.map(item => {
+      const s = item.strike_price;
+      const isAtm = (s === atmStrike);
+      const callOi = item.calls_oi_contracts || 0;
+      const putOi  = item.puts_oi_contracts || 0;
+      const ratioStr = calculateRatio(callOi, putOi);
+
+      const bgStyle = isAtm
+        ? (isLight ? 'background: #ffedd5; border: 1.5px solid #f97316;' : 'background: #1e1b4b; border: 1.5px solid #f97316;')
+        : (isLight ? 'background: #ffffff; border: 1px solid #cbd5e1;' : 'background: #0f172a; border: 1px solid #334155;');
+
+      const strikeColor = isAtm
+        ? (isLight ? '#c2410c' : '#fb923c')
+        : (isLight ? '#0f172a' : '#f8fafc');
+
+      const ratioColor = isLight ? '#d97706' : '#f59e0b';
+
+      return `
+        <div class="butterfly-center-row" style="display: flex; align-items: center; justify-content: space-between; padding: 4px 8px; border-radius: 6px; ${bgStyle} box-shadow: 0 1px 3px rgba(0,0,0,0.15); margin: 2px 0;">
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; font-weight: 800; color: ${strikeColor}; white-space: nowrap;">
+            ${s}${isAtm ? ' ATM' : ''}
+          </span>
+          <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.92rem; font-weight: 800; color: ${ratioColor}; white-space: nowrap;">
+            ${ratioStr}
+          </span>
+        </div>
+      `;
+    }).join('');
   }
 
   function calculateRatio(val1, val2) {
@@ -676,6 +795,66 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.fillText(ratioStr, xPixel, ratioY);
       });
 
+      ctx.restore();
+    }
+  };
+
+  // Data Labels Plugin for Left Call Butterfly Bar Chart (Extends Left)
+  const deltaButterflyLeftDatalabelsPlugin = {
+    id: 'deltaButterflyLeftDatalabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.font = 'bold 11px "JetBrains Mono", monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+
+      const dataset = chart.data.datasets[0];
+      const meta = chart.getDatasetMeta(0);
+      if (!meta || meta.hidden) return;
+
+      meta.data.forEach((bar, index) => {
+        const val = dataset.data[index];
+        if (val === undefined || val === null || val === 0) return;
+
+        const label = formatNumberCompact(val);
+        let fillClr = deltaChartColors.calls;
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        if (isLight && fillClr === '#ef4444') fillClr = '#dc2626';
+        ctx.fillStyle = fillClr;
+
+        ctx.fillText(label, bar.x - 6, bar.y);
+      });
+      ctx.restore();
+    }
+  };
+
+  // Data Labels Plugin for Right Put Butterfly Bar Chart (Extends Right)
+  const deltaButterflyRightDatalabelsPlugin = {
+    id: 'deltaButterflyRightDatalabels',
+    afterDatasetsDraw(chart) {
+      const { ctx } = chart;
+      ctx.save();
+      ctx.font = 'bold 11px "JetBrains Mono", monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+
+      const dataset = chart.data.datasets[0];
+      const meta = chart.getDatasetMeta(0);
+      if (!meta || meta.hidden) return;
+
+      meta.data.forEach((bar, index) => {
+        const val = dataset.data[index];
+        if (val === undefined || val === null || val === 0) return;
+
+        const label = formatNumberCompact(val);
+        let fillClr = deltaChartColors.puts;
+        const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+        if (isLight && fillClr === '#10b981') fillClr = '#059669';
+        ctx.fillStyle = fillClr;
+
+        ctx.fillText(label, bar.x + 6, bar.y);
+      });
       ctx.restore();
     }
   };
