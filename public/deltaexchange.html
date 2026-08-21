@@ -192,6 +192,23 @@
           <canvas id="deltaVolumeChart"></canvas>
         </div>
       </section>
+
+      <!-- 3. Butterfly Total Open Interest (Contracts) Bar Chart -->
+      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-top: 24px;">
+        <div class="section-title">
+          <div class="title-details">
+            <h3>Butterfly Total Open Interest (Contracts) Bar Chart</h3>
+            <span class="subtitle">Calls (Up) vs Puts (Down) Total Open Interest Contracts by Strike</span>
+          </div>
+          <div class="chart-legend-container">
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-butterfly-call-dot" style="background: #ef4444;"></span>Call OI Contracts (Up)</div>
+            <div class="legend-item"><span class="legend-dot" id="delta-legend-butterfly-put-dot" style="background: #10b981;"></span>Put OI Contracts (Down)</div>
+          </div>
+        </div>
+        <div class="vertical-chart-container" style="height: 420px;">
+          <canvas id="deltaButterflyOiChart"></canvas>
+        </div>
+      </section>
     </main>
 
     <!-- Full Option Chain Table Section -->

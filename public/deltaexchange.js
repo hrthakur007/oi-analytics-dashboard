@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let totalOiChartInstance = null;
   let oiChartInstance = null;
   let volumeChartInstance = null;
+  let butterflyOiChartInstance = null;
 
   const REFRESH_INTERVAL_SEC = 30;
   let countdown = REFRESH_INTERVAL_SEC;
@@ -76,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
     const tickColor = isLight ? '#475569' : '#94a3b8';
 
-    [totalOiChartInstance, volumeChartInstance].forEach(chart => {
+    [totalOiChartInstance, volumeChartInstance, butterflyOiChartInstance].forEach(chart => {
       if (!chart) return;
       if (chart.options.scales.x) {
         if (chart.options.scales.x.grid) chart.options.scales.x.grid.color = gridColor;
@@ -119,7 +120,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalPutDot = document.getElementById('delta-legend-total-put-dot');
     if (totalPutDot) totalPutDot.style.background = deltaChartColors.puts;
 
-    [totalOiChartInstance, volumeChartInstance].forEach(chart => {
+    const butterflyCallDot = document.getElementById('delta-legend-butterfly-call-dot');
+    if (butterflyCallDot) butterflyCallDot.style.background = deltaChartColors.calls;
+    const butterflyPutDot = document.getElementById('delta-legend-butterfly-put-dot');
+    if (butterflyPutDot) butterflyPutDot.style.background = deltaChartColors.puts;
+
+    [totalOiChartInstance, volumeChartInstance, butterflyOiChartInstance].forEach(chart => {
       if (!chart) return;
       chart.data.datasets[0].backgroundColor = deltaChartColors.calls;
       chart.data.datasets[0].borderColor = deltaChartColors.calls;
@@ -414,13 +420,14 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(diffMs / (1000 * 60 * 60 * 24), 0.1);
   }
 
-  // Render Total OI Contracts & Volume Bar Charts
+  // Render Total OI Contracts, Volume & Butterfly Total OI Bar Charts
   function renderCharts(items, spotPrice, atmStrike) {
     const strikes = items.map(i => i.strike_price);
     
-    // Total OI Contracts
+    // Total OI Contracts (Positive for Calls, Negative for Puts in Butterfly chart)
     const callTotalOi = items.map(i => i.calls_oi_contracts || 0);
     const putTotalOi  = items.map(i => i.puts_oi_contracts || 0);
+    const putTotalOiNeg = items.map(i => -(i.puts_oi_contracts || 0));
 
     // Volume Turnover USD
     const callVol = items.map(i => i.calls_turnover_usd || 0);
@@ -507,6 +514,49 @@ document.addEventListener('DOMContentLoaded', () => {
         plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
       });
     }
+
+    // 3. Butterfly Total Open Interest (Contracts) Bar Chart
+    const ctxButterfly = document.getElementById('deltaButterflyOiChart').getContext('2d');
+    if (butterflyOiChartInstance) {
+      butterflyOiChartInstance.data.labels = strikes;
+      butterflyOiChartInstance.data.datasets[0].data = callTotalOi;
+      butterflyOiChartInstance.data.datasets[1].data = putTotalOiNeg;
+      butterflyOiChartInstance.options.scales.x.ticks.callback = function(val, idx) {
+        const s = strikes[idx];
+        return s === atmStrike ? `${s} (ATM)` : `${s}`;
+      };
+      butterflyOiChartInstance.options.ratioData = { strikes, atmStrike, data1: callTotalOi, data2: putTotalOi };
+      butterflyOiChartInstance.update();
+    } else {
+      butterflyOiChartInstance = new Chart(ctxButterfly, {
+        type: 'bar',
+        data: {
+          labels: strikes,
+          datasets: [
+            { 
+              label: 'Call OI Contracts (Up)', 
+              data: callTotalOi, 
+              backgroundColor: deltaChartColors.calls, 
+              borderColor: deltaChartColors.calls, 
+              borderRadius: 4,
+              grouped: false,
+              barPercentage: 0.7
+            },
+            { 
+              label: 'Put OI Contracts (Down)', 
+              data: putTotalOiNeg, 
+              backgroundColor: deltaChartColors.puts, 
+              borderColor: deltaChartColors.puts, 
+              borderRadius: 4,
+              grouped: false,
+              barPercentage: 0.7
+            }
+          ]
+        },
+        options: getButterflyChartOptions(strikes, atmStrike, callTotalOi, putTotalOi),
+        plugins: [deltaDatalabelsPlugin, deltaSpotLinePlugin, deltaRatioTicksPlugin]
+      });
+    }
   }
 
   function calculateRatio(val1, val2) {
@@ -558,6 +608,46 @@ document.addEventListener('DOMContentLoaded', () => {
             color: tickColor,
             font: { family: "'JetBrains Mono', monospace", size: 11 },
             callback: function(val) { return formatNumberCompact(val); }
+          }
+        }
+      }
+    };
+  }
+
+  function getButterflyChartOptions(strikes, atmStrike, data1, data2) {
+    const isLight = document.documentElement.getAttribute('data-theme') === 'light';
+    const gridColor = isLight ? 'rgba(0, 0, 0, 0.07)' : 'rgba(255, 255, 255, 0.05)';
+    const tickColor = isLight ? '#475569' : '#94a3b8';
+
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      layout: { padding: { top: 45, bottom: 45 } },
+      ratioData: { strikes, atmStrike, data1, data2 },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false }
+      },
+      scales: {
+        x: {
+          grid: { color: gridColor },
+          ticks: {
+            color: tickColor,
+            font: { family: "'JetBrains Mono', monospace", size: 11, weight: 'bold' },
+            padding: 4,
+            callback: function(val, idx) {
+              const s = strikes[idx];
+              return s === atmStrike ? `${s} (ATM)` : `${s}`;
+            }
+          }
+        },
+        y: {
+          grace: '20%',
+          grid: { color: gridColor },
+          ticks: {
+            color: tickColor,
+            font: { family: "'JetBrains Mono', monospace", size: 11 },
+            callback: function(val) { return formatNumberCompact(Math.abs(val)); }
           }
         }
       }
@@ -616,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const val = dataset.data[index];
           if (val === undefined || val === null || val === 0) return;
 
-          const label = formatNumberCompact(val);
+          const label = formatNumberCompact(Math.abs(val));
           const isPositive = val >= 0;
           const padding = 6;
           ctx.textBaseline = isPositive ? 'bottom' : 'top';
