@@ -156,11 +156,30 @@
       </div>
     </div>
 
+    <!-- Chart Visibility Toolbar -->
+    <div class="chart-visibility-toolbar glass-panel" style="margin-bottom: 24px; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 0.88rem; color: var(--text-primary);">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #6366f1;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        Chart Visibility:
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+        <button id="toggle-chart-total-oi" class="btn-chart-toggle active">
+          <span class="eye-icon">👁️</span> Total OI Chart
+        </button>
+        <button id="toggle-chart-volume" class="btn-chart-toggle active">
+          <span class="eye-icon">👁️</span> Volume Chart
+        </button>
+        <button id="toggle-chart-butterfly" class="btn-chart-toggle active">
+          <span class="eye-icon">👁️</span> Butterfly OI Chart
+        </button>
+      </div>
+    </div>
+
     <!-- Charts Section: Total Open Interest Contracts & Volume Bar Charts (Full Width) -->
     <main class="dashboard-grid" style="grid-template-columns: 1fr;">
       
       <!-- 1. Total Open Interest (Contracts) Bar Chart -->
-      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-bottom: 24px;">
+      <section id="delta-section-total-oi" class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-bottom: 24px;">
         <div class="section-title">
           <div class="title-details">
             <h3>Total Open Interest (Contracts) Bar Chart</h3>
@@ -177,7 +196,7 @@
       </section>
 
       <!-- 2. Volume Bar Chart -->
-      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1;">
+      <section id="delta-section-volume" class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-bottom: 24px;">
         <div class="section-title">
           <div class="title-details">
             <h3>Volume Bar Chart</h3>
@@ -194,7 +213,7 @@
       </section>
 
       <!-- 3. Butterfly Total Open Interest (Contracts) Bar Chart -->
-      <section class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-top: 24px;">
+      <section id="delta-section-butterfly" class="vertical-chart-section glass-panel" style="grid-column: 1 / -1; margin-top: 0px;">
         <div class="section-title">
           <div class="title-details">
             <h3>Butterfly Total Open Interest (Contracts) Bar Chart</h3>

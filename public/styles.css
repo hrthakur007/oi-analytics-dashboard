@@ -33,6 +33,44 @@
   --transition-normal: 0.3s ease;
 }
 
+/* Chart Visibility Toggle Button Styles */
+.btn-chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: var(--font-sans);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-panel-solid);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.btn-chart-toggle:hover {
+  border-color: var(--primary-color);
+  color: var(--text-primary);
+  transform: translateY(-1px);
+}
+
+.btn-chart-toggle.active {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: #6366f1;
+  color: #818cf8;
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
+}
+
+.btn-chart-toggle.hidden-state {
+  opacity: 0.5;
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
 /* ----------------------------------------------------
    Reset & Base Styles
    ---------------------------------------------------- */

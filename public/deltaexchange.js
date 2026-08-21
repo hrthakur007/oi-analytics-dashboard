@@ -42,13 +42,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const legendVolCallDot    = document.getElementById('delta-legend-vol-call-dot');
   const legendVolPutDot     = document.getElementById('delta-legend-vol-put-dot');
 
+  let deltaChartVisibility = {
+    totalOi: true,
+    volume: true,
+    butterfly: true
+  };
+
   // Initialize
   init();
 
   async function init() {
     initTheme();
     loadSavedColors();
+    loadChartVisibility();
     setupEventListeners();
+    applyChartVisibility();
     await fetchSymbolExpiryList();
   }
 
@@ -139,6 +147,63 @@ document.addEventListener('DOMContentLoaded', () => {
     saveColors();
   }
 
+  function loadChartVisibility() {
+    try {
+      const saved = localStorage.getItem('delta_chart_visibility');
+      if (saved) {
+        deltaChartVisibility = { ...deltaChartVisibility, ...JSON.parse(saved) };
+      }
+    } catch (e) {}
+  }
+
+  function saveChartVisibility() {
+    try {
+      localStorage.setItem('delta_chart_visibility', JSON.stringify(deltaChartVisibility));
+    } catch (e) {}
+  }
+
+  function applyChartVisibility() {
+    const secTotalOi   = document.getElementById('delta-section-total-oi');
+    const secVolume    = document.getElementById('delta-section-volume');
+    const secButterfly = document.getElementById('delta-section-butterfly');
+
+    const btnTotalOi   = document.getElementById('toggle-chart-total-oi');
+    const btnVolume    = document.getElementById('toggle-chart-volume');
+    const btnButterfly = document.getElementById('toggle-chart-butterfly');
+
+    // Total OI Chart Section
+    if (secTotalOi) {
+      secTotalOi.style.display = deltaChartVisibility.totalOi ? 'block' : 'none';
+    }
+    if (btnTotalOi) {
+      btnTotalOi.classList.toggle('active', deltaChartVisibility.totalOi);
+      btnTotalOi.classList.toggle('hidden-state', !deltaChartVisibility.totalOi);
+      btnTotalOi.querySelector('.eye-icon').textContent = deltaChartVisibility.totalOi ? '👁️' : '🙈';
+    }
+
+    // Volume Chart Section
+    if (secVolume) {
+      secVolume.style.display = deltaChartVisibility.volume ? 'block' : 'none';
+    }
+    if (btnVolume) {
+      btnVolume.classList.toggle('active', deltaChartVisibility.volume);
+      btnVolume.classList.toggle('hidden-state', !deltaChartVisibility.volume);
+      btnVolume.querySelector('.eye-icon').textContent = deltaChartVisibility.volume ? '👁️' : '🙈';
+    }
+
+    // Butterfly Chart Section
+    if (secButterfly) {
+      secButterfly.style.display = deltaChartVisibility.butterfly ? 'block' : 'none';
+    }
+    if (btnButterfly) {
+      btnButterfly.classList.toggle('active', deltaChartVisibility.butterfly);
+      btnButterfly.classList.toggle('hidden-state', !deltaChartVisibility.butterfly);
+      btnButterfly.querySelector('.eye-icon').textContent = deltaChartVisibility.butterfly ? '👁️' : '🙈';
+    }
+
+    saveChartVisibility();
+  }
+
   function setupEventListeners() {
     symbolSelect.addEventListener('change', (e) => {
       currentSymbol = e.target.value;
@@ -155,6 +220,30 @@ document.addEventListener('DOMContentLoaded', () => {
       strikeRangeSelect.addEventListener('change', (e) => {
         selectedStrikeCount = e.target.value;
         filterAndRender();
+      });
+    }
+
+    // Chart Visibility Toggle Buttons
+    const btnTotalOi   = document.getElementById('toggle-chart-total-oi');
+    const btnVolume    = document.getElementById('toggle-chart-volume');
+    const btnButterfly = document.getElementById('toggle-chart-butterfly');
+
+    if (btnTotalOi) {
+      btnTotalOi.addEventListener('click', () => {
+        deltaChartVisibility.totalOi = !deltaChartVisibility.totalOi;
+        applyChartVisibility();
+      });
+    }
+    if (btnVolume) {
+      btnVolume.addEventListener('click', () => {
+        deltaChartVisibility.volume = !deltaChartVisibility.volume;
+        applyChartVisibility();
+      });
+    }
+    if (btnButterfly) {
+      btnButterfly.addEventListener('click', () => {
+        deltaChartVisibility.butterfly = !deltaChartVisibility.butterfly;
+        applyChartVisibility();
       });
     }
 
