@@ -702,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const bigger = Math.max(v1, v2);
     const smaller = Math.min(v1, v2);
     const ratio = bigger / smaller;
-    const ratioStr = (ratio % 1 === 0) ? ratio.toFixed(0) : ratio.toFixed(1);
+    const ratioStr = (ratio % 1 === 0) ? ratio.toFixed(0) : ratio.toFixed(2);
     return `${ratioStr}`;
   }
 
